@@ -17,6 +17,7 @@ tracker/
 ├── src/
 │   ├── index.ts                    # Hono app entry, route mounting, cron handler
 │   ├── types.ts                    # Shared TypeScript types (Bindings, Bill, Category, User)
+│   ├── constants.ts                # Shared constants (STATUS_COLORS, STATE_NAMES)
 │   ├── routes/
 │   │   ├── public.ts               # GET / and GET /bill/:id
 │   │   ├── auth.ts                 # GET/POST /login, POST /logout
@@ -82,6 +83,7 @@ tracker/
 - Create: `vitest.config.ts`
 - Create: `src/index.ts`
 - Create: `src/types.ts`
+- Create: `src/constants.ts`
 - Create: `.gitignore`
 
 - [ ] **Step 1: Initialize the project**
@@ -230,6 +232,29 @@ export const STATUS_COLORS: Record<StatusSimple, { bg: string; text: string; bor
   "Vetoed": { bg: "#fee2e2", text: "#dc2626", border: "#dc2626" },
   "Failed": { bg: "#fee2e2", text: "#dc2626", border: "#dc2626" },
 };
+
+export const STATE_NAMES: Record<string, string> = {
+  US: "Federal", AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas",
+  CA: "California", CO: "Colorado", CT: "Connecticut", DE: "Delaware",
+  DC: "District of Columbia", FL: "Florida", GA: "Georgia", HI: "Hawaii",
+  ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa", KS: "Kansas",
+  KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland",
+  MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi",
+  MO: "Missouri", MT: "Montana", NE: "Nebraska", NV: "Nevada",
+  NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico", NY: "New York",
+  NC: "North Carolina", ND: "North Dakota", OH: "Ohio", OK: "Oklahoma",
+  OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina",
+  SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont",
+  VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin",
+  WY: "Wyoming",
+};
+
+export const STATES = ["US", ...Object.keys(STATE_NAMES).filter(s => s !== "US").sort()];
+
+export const STATUSES = [
+  "Introduced", "Passed One Chamber", "Passed Both Chambers",
+  "Signed Into Law", "Vetoed", "Failed",
+] as const;
 ```
 
 - [ ] **Step 7: Write `src/index.ts` (minimal)**
@@ -271,7 +296,7 @@ Expected: Server starts on localhost, returns "coming soon" text.
 - [ ] **Step 10: Commit**
 
 ```bash
-git add package.json package-lock.json tsconfig.json wrangler.toml vitest.config.ts src/index.ts src/types.ts .gitignore
+git add package.json package-lock.json tsconfig.json wrangler.toml vitest.config.ts src/index.ts src/types.ts src/constants.ts .gitignore
 git commit -m "feat: project scaffolding with Hono, D1, KV, and Vitest config"
 ```
 
@@ -924,6 +949,7 @@ git commit -m "feat: user authentication and session management services with te
 
 ```typescript
 import { createMiddleware } from "hono/factory";
+import { getCookie } from "hono/cookie";
 import type { Bindings } from "../types";
 import { getSession, type SessionData } from "../services/sessions";
 
@@ -933,9 +959,7 @@ type Env = {
 };
 
 export const requireAuth = createMiddleware<Env>(async (c, next) => {
-  const cookie = c.req.header("Cookie") ?? "";
-  const match = cookie.match(/session=([^;]+)/);
-  const token = match?.[1];
+  const token = getCookie(c, "session");
 
   if (!token) {
     return c.redirect("/login");
@@ -1013,7 +1037,7 @@ git commit -m "feat: HTML templates for layout, public pages, admin pages, and a
 - CSS in layout.ts includes: card styles (`.bill-card` with left border color by status), filter bar, stats bar, form elements, admin table, status badge colors, category pills, definition/notes callout boxes, responsive breakpoints at 768px
 - The `data-search` attribute on bill cards should contain a lowercased concatenation of: state code, state name, bill number, title, notes, and social media definition — this powers the client-side text search
 - Each template file should be ~50-150 lines. Layout.ts will be the largest (~200 lines including all CSS)
-- Use Hono's built-in `getCookie` from `hono/cookie` instead of manual regex cookie parsing in auth middleware and auth routes
+- Templates import `STATE_NAMES`, `STATES`, and `STATUSES` from `../constants` (or `../../constants` depending on depth)
 
 ---
 
@@ -1039,6 +1063,7 @@ Expected: FAIL
 
 ```typescript
 import { Hono } from "hono";
+import { getCookie } from "hono/cookie";
 import type { Bindings } from "../types";
 import { verifyUser } from "../services/users";
 import { createSession, deleteSession } from "../services/sessions";
@@ -1074,10 +1099,9 @@ auth.post("/login", async (c) => {
 });
 
 auth.post("/logout", async (c) => {
-  const cookie = c.req.header("Cookie") ?? "";
-  const match = cookie.match(/session=([^;]+)/);
-  if (match) {
-    await deleteSession(c.env.SESSIONS, match[1]);
+  const token = getCookie(c, "session");
+  if (token) {
+    await deleteSession(c.env.SESSIONS, token);
   }
   c.header("Set-Cookie", "session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0");
   return c.redirect("/");
