@@ -1,6 +1,7 @@
 export interface SessionData {
   user_id: number;
   username: string;
+  role: string;
 }
 
 export async function createSession(kv: KVNamespace, data: SessionData): Promise<string> {

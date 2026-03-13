@@ -9,12 +9,13 @@ export async function setupTestDb() {
 
   await db.prepare(`CREATE TABLE IF NOT EXISTS bill_categories (bill_id INTEGER NOT NULL REFERENCES bills(id) ON DELETE CASCADE, category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE, PRIMARY KEY (bill_id, category_id))`).run();
 
-  await db.prepare(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, email TEXT, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'user', created_at TEXT NOT NULL DEFAULT (datetime('now')))`).run();
 
   // Clear data between test runs
   await db.prepare(`DELETE FROM bill_categories`).run();
   await db.prepare(`DELETE FROM bills`).run();
   await db.prepare(`DELETE FROM categories`).run();
+  await db.prepare(`DELETE FROM users`).run();
 
   await db.prepare(`INSERT OR IGNORE INTO categories (name, slug, sort_order) VALUES ('Age Verification', 'age-verification', 1)`).run();
   await db.prepare(`INSERT OR IGNORE INTO categories (name, slug, sort_order) VALUES ('Parental Consent', 'parental-consent', 2)`).run();

@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS bill_categories (
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT NOT NULL UNIQUE,
+  email TEXT,
   password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

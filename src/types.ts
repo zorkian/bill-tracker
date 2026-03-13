@@ -37,7 +37,9 @@ export interface Category {
 export interface User {
   id: number;
   username: string;
+  email: string | null;
   password_hash: string;
+  role: string;
   created_at: string;
 }
 

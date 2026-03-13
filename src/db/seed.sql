@@ -23,5 +23,5 @@ INSERT OR IGNORE INTO categories (name, slug, sort_order) VALUES
   ('Content-Specific Restrictions', 'content-specific-restrictions', 22),
   ('Disable Logged-Out Viewing', 'disable-logged-out-viewing', 23);
 
-INSERT OR IGNORE INTO users (username, password_hash) VALUES
-  ('admin', '$2b$10$wZ22x7OrecQi.wMFfwax0.8n97Wrg7CB/VgF6CZctqggRDNpJ.qkG');
+INSERT OR IGNORE INTO users (username, password_hash, role) VALUES
+  ('admin', '$2b$10$wZ22x7OrecQi.wMFfwax0.8n97Wrg7CB/VgF6CZctqggRDNpJ.qkG', 'admin');
