@@ -1,12 +1,15 @@
 import { Hono } from "hono";
 import { csrf } from "hono/csrf";
 import type { Bindings } from "./types";
+import { auth } from "./routes/auth";
 
 const app = new Hono<{ Bindings: Bindings }>();
 
 app.use("*", csrf());
 
-app.get("/", (c) => c.text("Social Media Bill Tracker - coming soon"));
+app.route("/", auth);
+
+export { app };
 
 export default {
   fetch: app.fetch,
