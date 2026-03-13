@@ -33,7 +33,7 @@ A public-facing website that tracks US state and federal legislation targeting s
 | `date_introduced` | TEXT | ISO 8601 date |
 | `last_action_date` | TEXT | ISO 8601 date |
 | `last_action_description` | TEXT | Description of last legislative action |
-| `session_end_date` | TEXT | ISO 8601 date — when the legislative session ends |
+| `session_end_date` | TEXT | ISO 8601 date — when the legislative session ends. Populated from Legiscan session data during initial lookup if available, otherwise entered manually. Not updated by cron polling. |
 | `social_media_definition` | TEXT | The specific definition of "social media" used in this bill |
 | `notes` | TEXT | Free-text editorial/analysis content |
 | `created_at` | TEXT NOT NULL | ISO 8601 timestamp |
@@ -107,7 +107,7 @@ A public-facing website that tracks US state and federal legislation targeting s
 | Method | Path | Description |
 |---|---|---|
 | GET | `/` | Main bill tracker page — all bills rendered inline, JS filtering |
-| GET | `/bill/:id` | Individual bill detail (anchor-based, optional standalone page) |
+| GET | `/bill/:id` | Individual bill detail page — standalone page with full bill info |
 
 ### Authentication
 
@@ -126,7 +126,8 @@ A public-facing website that tracks US state and federal legislation targeting s
 | POST | `/admin/bills` | Create bill |
 | GET | `/admin/bills/:id/edit` | Edit bill form |
 | POST | `/admin/bills/:id` | Update bill |
-| POST | `/admin/bills/:id/delete` | Delete bill |
+| GET | `/admin/bills/:id/delete` | Delete confirmation page |
+| POST | `/admin/bills/:id/delete` | Execute bill deletion |
 
 ### API (internal, used by admin JS)
 
@@ -162,6 +163,10 @@ Sits above the bill cards. All filtering is instant, client-side JavaScript oper
 - **Status dropdown:** All statuses, with "All Statuses" default
 - **Category dropdown:** All categories, with "All Categories" default
 - **Text search:** Searches bill number, title, notes, definition
+
+### Default sort order
+
+Bills are sorted by `last_action_date` descending (most recent activity first). Failed/Vetoed bills are sorted to the bottom.
 
 ### Stats bar
 
@@ -202,19 +207,23 @@ Simple top bar: site name + "Admin" badge, links to Bills list, View Site, Logou
 ### Initial lookup (admin action)
 
 When an admin enters a state + bill number and clicks "Look Up":
-1. Call Legiscan `getBill` or `search` API
-2. Parse response for: title, status, dates, Legiscan URL, bill ID
-3. Return as JSON to the admin form
-4. Admin reviews, fills in remaining fields (categories, definition, notes), saves
+1. Call Legiscan `search` API with state + bill number to find the bill
+2. Use the returned `bill_id` to call `getBill` for full details
+3. Parse `getBill` response for: title, status, status_detail, dates (intro date, last action date), Legiscan URL, bill ID, and session info (including session end date if available)
+4. Return as JSON to the admin form, populating all fields that have data
+5. Admin reviews, fills in remaining fields (categories, definition, notes), saves
 
 ### Automated status polling (Cron Trigger)
 
 A Cloudflare Cron Trigger runs daily:
-1. Query all bills where `status_simple` is NOT in (Signed Into Law, Vetoed, Failed)
-2. For each, call Legiscan API with stored `legiscan_bill_id`
+1. Query all bills where `status_simple` is NOT in (Signed Into Law, Vetoed, Failed) AND `legiscan_bill_id` is NOT NULL
+2. For each, call Legiscan `getBill` API with stored `legiscan_bill_id`
 3. Update `status_detail`, `last_action_date`, `last_action_description`
 4. If the Legiscan status maps to a different `status_simple`, update that too
-5. Update `updated_at` timestamp
+5. Check action history for governor signature (action type 28 = "Signed by Governor") — if found, set `status_simple` to "Signed Into Law"
+6. Update `updated_at` timestamp
+
+**Error handling:** If the Legiscan API returns an error or is unreachable for a specific bill, skip that bill and continue with the rest. Errors are logged via `console.error` (visible in Workers logs). The bill's data remains unchanged and will be retried on the next daily run.
 
 **Rate limiting:** Legiscan allows 30,000 queries/month. With ~50-100 active bills polled daily, that's ~1,500-3,000 queries/month — well within limits.
 
@@ -230,8 +239,9 @@ Legiscan provides numeric status codes. Mapping to simplified statuses:
 | 4 (Passed) | Passed Both Chambers |
 | 5 (Vetoed) | Vetoed |
 | 6 (Failed) | Failed |
+| Action type 28 (Signed by Governor) | Signed Into Law |
 
-Signed Into Law is set when Legiscan indicates the bill was signed by the governor (determined from action history).
+Note: "Signed Into Law" is detected from the bill's action history rather than the top-level status code, since Legiscan's status codes don't have a distinct value for it.
 
 ## Authentication
 
@@ -251,9 +261,17 @@ Hono middleware on all `/admin/*` routes:
 3. If missing/expired → redirect to `/login`
 4. If valid → attach user info to request context, proceed
 
+### CSRF protection
+
+All POST routes use Hono's built-in CSRF middleware (Origin header validation). No hidden form tokens needed — Origin checking is sufficient.
+
 ### User management
 
-Phase 1: Users are created via a CLI script (`wrangler d1 execute` or a seed script). No self-registration, no admin UI for user management.
+Phase 1: Users are created via a CLI seed script. The seed script includes a pre-generated bcrypt hash. To create a new admin user, generate a hash with `npx bcryptjs <password>` (or similar tool) and add an INSERT to `seed.sql`, then run `wrangler d1 execute`. No self-registration, no admin UI for user management.
+
+### Delete confirmation
+
+Bill deletion requires a confirmation step — the delete button submits to a confirmation page showing the bill details before final deletion.
 
 ## Phase 2 Features (out of scope for phase 1)
 
@@ -283,7 +301,8 @@ tracker/
 │   └── templates/
 │       ├── layout.ts          # Base HTML layout (head, header, footer)
 │       ├── public/
-│       │   └── index.ts       # Public bill tracker page template
+│       │   ├── index.ts       # Public bill tracker page template
+│       │   └── bill-detail.ts # Individual bill detail page template
 │       ├── admin/
 │       │   ├── bills-list.ts  # Admin bill list template
 │       │   └── bill-form.ts   # Admin add/edit bill template
