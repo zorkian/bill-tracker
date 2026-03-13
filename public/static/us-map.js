@@ -118,7 +118,7 @@
   var svgNS = "http://www.w3.org/2000/svg";
 
   var svg = document.createElementNS(svgNS, "svg");
-  svg.setAttribute("viewBox", "0 0 1100 600");
+  svg.setAttribute("viewBox", "0 0 1200 600");
   svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", "Interactive map of US states with tracked bills");
@@ -138,7 +138,7 @@
     ".us-map-state:hover { filter: brightness(0.9); }",
     ".us-map-state.selected:hover { fill: #1d4ed8; }",
     ".us-map-callout-line { stroke: #94a3b8; stroke-width: 0.8; fill: none; }",
-    ".us-map-callout-label { font-size: 11px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; }",
+    ".us-map-callout-label { font-size: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; }",
     ".us-map-callout-label .callout-bg { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 0.5; rx: 3; }",
     ".us-map-callout-label .callout-bg.has-bills { fill: #dbeafe; stroke: #2563eb; }",
     ".us-map-callout-label .callout-bg.selected { fill: #2563eb; stroke: #1d4ed8; }",
@@ -200,22 +200,28 @@
   var calloutsGroup = document.createElementNS(svgNS, "g");
   calloutsGroup.setAttribute("class", "us-map-callouts");
 
-  var calloutLabelX = 1040;
-  var calloutStartY = 95;
-  var calloutSpacing = 24;
+  // Two-column layout: col 0 = first 5, col 1 = next 4
+  var colX = [1020, 1100];
+  var calloutStartY = 85;
+  var calloutSpacing = 42;
+  var calloutBoxW = 60;
+  var calloutBoxH = 32;
   var calloutElements = {};
 
   CALLOUT_STATES.forEach(function (code, i) {
     var center = STATE_CENTERS[code];
     if (!center) return;
 
-    var labelY = calloutStartY + i * calloutSpacing;
+    var col = i < 5 ? 0 : 1;
+    var row = i < 5 ? i : i - 5;
+    var labelX = colX[col];
+    var labelY = calloutStartY + row * calloutSpacing;
 
     // Line from state center to label
     var line = document.createElementNS(svgNS, "line");
     line.setAttribute("x1", center[0]);
     line.setAttribute("y1", center[1]);
-    line.setAttribute("x2", calloutLabelX - 30);
+    line.setAttribute("x2", labelX - calloutBoxW / 2);
     line.setAttribute("y2", labelY);
     line.setAttribute("class", "us-map-callout-line");
     calloutsGroup.appendChild(line);
@@ -227,19 +233,20 @@
     labelGroup.style.cursor = "pointer";
 
     var bgRect = document.createElementNS(svgNS, "rect");
-    bgRect.setAttribute("x", calloutLabelX - 28);
-    bgRect.setAttribute("y", labelY - 10);
-    bgRect.setAttribute("width", 56);
-    bgRect.setAttribute("height", 18);
-    bgRect.setAttribute("rx", "3");
+    bgRect.setAttribute("x", labelX - calloutBoxW / 2);
+    bgRect.setAttribute("y", labelY - calloutBoxH / 2);
+    bgRect.setAttribute("width", calloutBoxW);
+    bgRect.setAttribute("height", calloutBoxH);
+    bgRect.setAttribute("rx", "4");
     var bgCls = "callout-bg";
     if (billCounts[code]) bgCls += " has-bills";
     bgRect.setAttribute("class", bgCls);
 
     var text = document.createElementNS(svgNS, "text");
-    text.setAttribute("x", calloutLabelX);
-    text.setAttribute("y", labelY + 3);
+    text.setAttribute("x", labelX);
+    text.setAttribute("y", labelY + 1);
     text.setAttribute("text-anchor", "middle");
+    text.setAttribute("dominant-baseline", "middle");
     var textCls = billCounts[code] ? "has-bills" : "";
     if (textCls) text.setAttribute("class", textCls);
     text.textContent = code;
@@ -309,7 +316,7 @@
     var ty = svgPt.y - 20;
 
     var bgW = bbox.width + padX * 2;
-    if (tx + bgW > 1090) tx = svgPt.x - bgW - 8;
+    if (tx + bgW > 1190) tx = svgPt.x - bgW - 8;
     if (ty < 5) ty = svgPt.y + 16;
 
     tooltipBg.setAttribute("x", tx);
