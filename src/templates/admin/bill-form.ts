@@ -6,8 +6,9 @@ export function adminBillFormPage(options: {
   bill?: BillWithCategories;
   categories: Category[];
   error?: string;
+  role?: string;
 }): string {
-  const { bill, categories, error } = options;
+  const { bill, categories, error, role } = options;
   const isEdit = !!bill;
   const pageTitle = "Admin - " + (isEdit ? "Edit" : "Add") + " Bill";
   const formAction = isEdit ? `/admin/bills/${bill.id}` : "/admin/bills";
@@ -183,5 +184,5 @@ export function adminBillFormPage(options: {
     </form>
   `;
 
-  return layout(pageTitle, content, { isAdmin: true });
+  return layout(pageTitle, content, { isAdmin: true, role });
 }

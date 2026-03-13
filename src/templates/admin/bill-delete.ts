@@ -2,7 +2,7 @@ import { layout, escHtml } from "../layout";
 import { STATE_NAMES } from "../../constants";
 import type { BillWithCategories } from "../../types";
 
-export function adminBillDeletePage(bill: BillWithCategories): string {
+export function adminBillDeletePage(bill: BillWithCategories, role?: string): string {
   const stateName = STATE_NAMES[bill.state] ?? bill.state;
 
   const content = `
@@ -27,5 +27,5 @@ export function adminBillDeletePage(bill: BillWithCategories): string {
     </div>
   `;
 
-  return layout("Admin - Delete Bill", content, { isAdmin: true });
+  return layout("Admin - Delete Bill", content, { isAdmin: true, role });
 }

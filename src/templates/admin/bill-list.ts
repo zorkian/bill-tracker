@@ -9,7 +9,7 @@ function formatDate(iso: string | null | undefined): string {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 }
 
-export function adminBillListPage(bills: Bill[]): string {
+export function adminBillListPage(bills: Bill[], role?: string): string {
   const rows = bills.map(bill => {
     const stateName = STATE_NAMES[bill.state] ?? bill.state;
     const badgeClass = statusClass(bill.status_simple);
@@ -55,5 +55,5 @@ export function adminBillListPage(bills: Bill[]): string {
     </table>
   `;
 
-  return layout("Admin - Bills", content, { isAdmin: true });
+  return layout("Admin - Bills", content, { isAdmin: true, role });
 }
