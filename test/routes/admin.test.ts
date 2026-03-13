@@ -126,13 +126,11 @@ describe("admin routes", () => {
     expect(res.headers.get("Location")).toBe("/admin");
   });
 
-  it("GET /admin/legiscan-lookup returns 501 not implemented", async () => {
+  it("GET /admin/legiscan-lookup returns 400 without params", async () => {
     const cookie = await authCookie();
-    const res = await app.request("/admin/legiscan-lookup", {
-      headers: { Cookie: cookie },
-    }, env);
-    expect(res.status).toBe(501);
-    const json = await res.json();
-    expect(json).toEqual({ error: "Not implemented" });
+    const res = await app.request("/admin/legiscan-lookup", { headers: { Cookie: cookie } }, env);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBeDefined();
   });
 });

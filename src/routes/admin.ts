@@ -12,6 +12,7 @@ import { getAllCategories } from "../services/categories";
 import { adminBillListPage } from "../templates/admin/bill-list";
 import { adminBillFormPage } from "../templates/admin/bill-form";
 import { adminBillDeletePage } from "../templates/admin/bill-delete";
+import { searchBill } from "../services/legiscan";
 
 const admin = new Hono<{ Bindings: Bindings }>();
 
@@ -125,7 +126,28 @@ admin.post("/admin/bills/:id/delete", async (c) => {
 });
 
 admin.get("/admin/legiscan-lookup", async (c) => {
-  return c.json({ error: "Not implemented" }, 501);
+  const state = c.req.query("state");
+  const billNumber = c.req.query("bill_number");
+
+  if (!state || !billNumber) {
+    return c.json({ error: "state and bill_number are required" }, 400);
+  }
+
+  const apiKey = c.env.LEGISCAN_API_KEY;
+  if (!apiKey) {
+    return c.json({ error: "Legiscan API key not configured" }, 500);
+  }
+
+  try {
+    const result = await searchBill(apiKey, state, billNumber);
+    if (!result) {
+      return c.json({ error: "Bill not found" }, 404);
+    }
+    return c.json(result);
+  } catch (e) {
+    console.error("Legiscan lookup failed:", e);
+    return c.json({ error: "Lookup failed" }, 500);
+  }
 });
 
 export { admin };
