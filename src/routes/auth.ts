@@ -28,6 +28,7 @@ auth.post("/login", async (c) => {
   const token = await createSession(c.env.SESSIONS, {
     user_id: user.id,
     username: user.username,
+    role: user.role,
   });
 
   c.header("Set-Cookie", `session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${7 * 24 * 60 * 60}`);

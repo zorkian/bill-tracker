@@ -23,3 +23,11 @@ export const requireAuth = createMiddleware<Env>(async (c, next) => {
   c.set("session", session);
   await next();
 });
+
+export const requireAdmin = createMiddleware<Env>(async (c, next) => {
+  const session = c.get("session");
+  if (session.role !== "admin") {
+    return c.text("Forbidden", 403);
+  }
+  await next();
+});
