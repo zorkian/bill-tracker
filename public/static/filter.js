@@ -3,8 +3,8 @@
   var statusFilter = document.getElementById("filter-status");
   var categoryFilter = document.getElementById("filter-category");
   var searchFilter = document.getElementById("filter-search");
-  var billList = document.getElementById("bill-list");
-  var noResults = document.getElementById("no-results");
+  var billList = document.getElementById("bills-grid");
+  var noResults = document.getElementById("no-bills");
 
   if (!stateFilter || !billList) return;
 
@@ -34,7 +34,7 @@
     var el;
     el = document.getElementById("stat-total"); if (el) el.textContent = visible;
     el = document.getElementById("stat-signed"); if (el) el.textContent = signed;
-    el = document.getElementById("stat-active"); if (el) el.textContent = active;
+    el = document.getElementById("stat-progress"); if (el) el.textContent = active;
     el = document.getElementById("stat-failed"); if (el) el.textContent = failed;
   }
 

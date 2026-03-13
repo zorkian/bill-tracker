@@ -95,8 +95,8 @@ export function layout(title: string, content: string, options?: { isAdmin?: boo
     .btn:hover { text-decoration: none; }
     .btn-primary { background: #2563eb; color: #fff; }
     .btn-primary:hover { background: #1d4ed8; color: #fff; }
-    .btn-danger { background: #dc2626; color: #fff; }
-    .btn-danger:hover { background: #b91c1c; color: #fff; }
+    .btn-danger { background: #fff; color: #dc2626; border: 1px solid #fca5a5; }
+    .btn-danger:hover { background: #fef2f2; color: #b91c1c; border-color: #dc2626; }
     .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
     .btn-secondary:hover { background: #e2e8f0; color: #1e293b; }
     .btn-sm { padding: 0.3rem 0.65rem; font-size: 0.8rem; }
@@ -205,7 +205,7 @@ export function layout(title: string, content: string, options?: { isAdmin?: boo
     ${content}
   </main>
   <footer>
-    <p>A project of <a href="https://dw-advocacy.dreamwidth.org/" target="_blank" rel="noopener">Dreamwidth Advocacy</a></p>
+    <p>A project by <a href="https://www.dreamwidth.org/" target="_blank" rel="noopener">Dreamwidth Studios</a></p>
   </footer>
 </body>
 </html>`;
