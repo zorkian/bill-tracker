@@ -42,4 +42,15 @@
   statusFilter.addEventListener("change", applyFilters);
   categoryFilter.addEventListener("change", applyFilters);
   searchFilter.addEventListener("input", applyFilters);
+
+  var resetBtn = document.getElementById("filter-reset");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", function () {
+      stateFilter.value = "";
+      statusFilter.value = "";
+      categoryFilter.value = "";
+      searchFilter.value = "";
+      applyFilters();
+    });
+  }
 })();

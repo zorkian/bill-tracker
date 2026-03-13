@@ -150,6 +150,7 @@ export function publicIndexPage(bills: BillWithCategories[], categories: Categor
   }).join("");
 
   const content = `
+    <div id="us-map"></div>
     ${filterBar}
     ${statsBar}
     <div class="bills-grid" id="bills-grid">

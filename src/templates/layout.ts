@@ -37,6 +37,10 @@ export function layout(title: string, content: string, options?: { isAdmin?: boo
     footer a { color: #94a3b8; }
     footer a:hover { color: #cbd5e1; }
 
+    /* US Map */
+    #us-map { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+    #us-map svg { width: 100%; height: auto; max-height: 400px; }
+
     /* Filter bar */
     .filter-bar { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; }
     .filter-group { display: flex; flex-direction: column; gap: 0.25rem; min-width: 150px; flex: 1; }
@@ -178,7 +182,8 @@ export function layout(title: string, content: string, options?: { isAdmin?: boo
 
   const publicSubtitle = `<span class="header-subtitle">Tracking state legislation affecting social media platforms</span>`;
 
-  const filterScript = isAdmin ? "" : `<script src="/static/filter.js" defer></script>`;
+  const filterScript = isAdmin ? "" : `<script src="/static/us-map.js" defer></script>
+  <script src="/static/filter.js" defer></script>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
