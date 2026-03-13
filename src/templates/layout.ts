@@ -1,6 +1,8 @@
 import { STATUS_COLORS } from "../constants";
 
-export function layout(title: string, content: string, isAdmin?: boolean): string {
+export function layout(title: string, content: string, options?: { isAdmin?: boolean; role?: string }): string {
+  const isAdmin = options?.isAdmin;
+  const role = options?.role;
   const statusColorCss = Object.entries(STATUS_COLORS).map(([status, colors]) => {
     const cls = status.toLowerCase().replace(/\s+/g, "-");
     return `.status-badge.status-${cls} { background: ${colors.bg}; color: ${colors.text}; border: 1px solid ${colors.border}; }
@@ -167,6 +169,8 @@ export function layout(title: string, content: string, isAdmin?: boolean): strin
   const adminNav = `
     <nav>
       <a href="/admin">Bills</a>
+      ${role === "admin" ? '<a href="/admin/users">Users</a>' : ""}
+      <a href="/admin/password">Password</a>
       <a href="/" target="_blank">View Site</a>
       <a href="/logout" class="logout" onclick="return confirm('Log out?')">Logout</a>
     </nav>

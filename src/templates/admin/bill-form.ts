@@ -183,5 +183,5 @@ export function adminBillFormPage(options: {
     </form>
   `;
 
-  return layout(pageTitle, content, true);
+  return layout(pageTitle, content, { isAdmin: true });
 }

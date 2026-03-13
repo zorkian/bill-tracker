@@ -27,5 +27,5 @@ export function adminBillDeletePage(bill: BillWithCategories): string {
     </div>
   `;
 
-  return layout("Admin - Delete Bill", content, true);
+  return layout("Admin - Delete Bill", content, { isAdmin: true });
 }

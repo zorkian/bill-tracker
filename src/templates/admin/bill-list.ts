@@ -55,5 +55,5 @@ export function adminBillListPage(bills: Bill[]): string {
     </table>
   `;
 
-  return layout("Admin - Bills", content, true);
+  return layout("Admin - Bills", content, { isAdmin: true });
 }
