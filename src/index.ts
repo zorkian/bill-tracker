@@ -4,6 +4,7 @@ import type { Bindings } from "./types";
 import { auth } from "./routes/auth";
 import { admin } from "./routes/admin";
 import { pub } from "./routes/public";
+import { pollStatuses } from "./cron/poll-statuses";
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -18,6 +19,6 @@ export { app };
 export default {
   fetch: app.fetch,
   async scheduled(event: ScheduledEvent, env: Bindings, ctx: ExecutionContext) {
-    // Cron handler will be implemented in Task 14
+    ctx.waitUntil(pollStatuses(env.DB, env.LEGISCAN_API_KEY));
   },
 };
