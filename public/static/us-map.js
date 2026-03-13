@@ -137,7 +137,6 @@
     ".us-map-state.selected { fill: #2563eb; stroke: #1d4ed8; stroke-width: 1.5; }",
     ".us-map-state:hover { filter: brightness(0.9); }",
     ".us-map-state.selected:hover { fill: #1d4ed8; }",
-    ".us-map-callout-line { stroke: #94a3b8; stroke-width: 0.8; fill: none; }",
     ".us-map-callout-label { font-size: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; }",
     ".us-map-callout-label .callout-bg { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 0.5; rx: 3; }",
     ".us-map-callout-label .callout-bg.has-bills { fill: #dbeafe; stroke: #2563eb; }",
@@ -146,9 +145,9 @@
     ".us-map-callout-label text.has-bills { fill: #1e40af; }",
     ".us-map-callout-label text.selected { fill: #ffffff; }",
     ".us-map-callout-label:hover .callout-bg { stroke-width: 1.2; }",
-    ".us-map-tooltip { pointer-events: none; font-size: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }",
-    ".us-map-tooltip rect { fill: #1e293b; rx: 4; }",
-    ".us-map-tooltip text { fill: #fff; }"
+    ".us-map-tooltip { pointer-events: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }",
+    ".us-map-tooltip rect { fill: #1e293b; rx: 6; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25)); }",
+    ".us-map-tooltip text { fill: #f1f5f9; font-size: 18px; font-weight: 600; }"
   ].join("\n");
   svg.appendChild(style);
 
@@ -217,15 +216,6 @@
     var labelX = colX[col];
     var labelY = calloutStartY + row * calloutSpacing;
 
-    // Line from state center to label
-    var line = document.createElementNS(svgNS, "line");
-    line.setAttribute("x1", center[0]);
-    line.setAttribute("y1", center[1]);
-    line.setAttribute("x2", labelX - calloutBoxW / 2);
-    line.setAttribute("y2", labelY);
-    line.setAttribute("class", "us-map-callout-line");
-    calloutsGroup.appendChild(line);
-
     // Label group
     var labelGroup = document.createElementNS(svgNS, "g");
     labelGroup.setAttribute("class", "us-map-callout-label");
@@ -289,40 +279,58 @@
   container.appendChild(svg);
 
   // Tooltip helpers
+  var padX = 12, padY = 10;
+  var tooltipSvgPt = null;
+
+  function sizeTooltipBg() {
+    var bbox = tooltipText.getBBox();
+    tooltipBg.setAttribute("width", bbox.width + padX * 2);
+    tooltipBg.setAttribute("height", bbox.height + padY * 2);
+  }
+
+  function positionTooltip() {
+    if (!tooltipSvgPt) return;
+    var bbox = tooltipText.getBBox();
+    var bgW = bbox.width + padX * 2;
+    var bgH = bbox.height + padY * 2;
+    var tx = tooltipSvgPt.x + 12;
+    var ty = tooltipSvgPt.y - bgH - 4;
+
+    if (tx + bgW > 1190) tx = tooltipSvgPt.x - bgW - 8;
+    if (ty < 5) ty = tooltipSvgPt.y + 16;
+
+    tooltipBg.setAttribute("x", tx);
+    tooltipBg.setAttribute("y", ty);
+    tooltipBg.setAttribute("width", bgW);
+    tooltipBg.setAttribute("height", bgH);
+    tooltipText.setAttribute("x", tx + padX);
+    tooltipText.setAttribute("y", ty + bgH / 2);
+  }
+
   function showTooltip(e, code) {
     var name = STATE_NAMES[code] || code;
     var count = billCounts[code] || 0;
     var label = name + " (" + count + " bill" + (count !== 1 ? "s" : "") + ")";
     tooltipText.textContent = label;
 
-    var bbox = tooltipText.getBBox();
-    var padX = 8, padY = 6;
-    tooltipBg.setAttribute("width", bbox.width + padX * 2);
-    tooltipBg.setAttribute("height", bbox.height + padY * 2);
-
+    // Make visible first so getBBox works
     tooltipGroup.style.display = "";
-    moveTooltip(e);
+
+    var pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    tooltipSvgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
+
+    sizeTooltipBg();
+    positionTooltip();
   }
 
   function moveTooltip(e) {
     var pt = svg.createSVGPoint();
     pt.x = e.clientX;
     pt.y = e.clientY;
-    var svgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
-
-    var bbox = tooltipText.getBBox();
-    var padX = 8, padY = 6;
-    var tx = svgPt.x + 12;
-    var ty = svgPt.y - 20;
-
-    var bgW = bbox.width + padX * 2;
-    if (tx + bgW > 1190) tx = svgPt.x - bgW - 8;
-    if (ty < 5) ty = svgPt.y + 16;
-
-    tooltipBg.setAttribute("x", tx);
-    tooltipBg.setAttribute("y", ty);
-    tooltipText.setAttribute("x", tx + padX);
-    tooltipText.setAttribute("y", ty + (bbox.height + padY * 2) / 2);
+    tooltipSvgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
+    positionTooltip();
   }
 
   function hideTooltip() {
