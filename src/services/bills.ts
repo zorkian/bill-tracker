@@ -16,6 +16,7 @@ export interface CreateBillInput {
   notes?: string;
   change_hash?: string;
   legiscan_session_id?: number;
+  urgent?: number;
   category_ids: number[];
 }
 
@@ -28,9 +29,9 @@ export async function createBill(db: D1Database, input: CreateBillInput): Promis
       `INSERT INTO bills (state, bill_number, title, legiscan_bill_id, legiscan_url,
         status_simple, status_detail, date_introduced, last_action_date,
         last_action_description, session_end_date, social_media_definition, notes,
-        change_hash, legiscan_session_id,
+        change_hash, legiscan_session_id, urgent,
         created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       input.state, input.bill_number, input.title ?? null,
@@ -40,6 +41,7 @@ export async function createBill(db: D1Database, input: CreateBillInput): Promis
       input.last_action_description ?? null, input.session_end_date ?? null,
       input.social_media_definition ?? null, input.notes ?? null,
       input.change_hash ?? null, input.legiscan_session_id ?? null,
+      input.urgent ?? 0,
       now, now
     )
     .run();
@@ -106,7 +108,7 @@ export async function updateBill(db: D1Database, id: number, input: UpdateBillIn
     "state", "bill_number", "title", "legiscan_bill_id", "legiscan_url",
     "status_simple", "status_detail", "date_introduced", "last_action_date",
     "last_action_description", "session_end_date", "social_media_definition", "notes",
-    "change_hash", "legiscan_session_id",
+    "change_hash", "legiscan_session_id", "urgent",
   ];
 
   for (const key of settable) {

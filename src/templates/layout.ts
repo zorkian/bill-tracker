@@ -71,6 +71,9 @@ export function layout(title: string, content: string, options?: { isAdmin?: boo
     .status-badge { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 9999px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.04em; }
     ${statusColorCss}
 
+    /* Action alert */
+    .action-alert-badge { background: #dc2626; color: #fff; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; vertical-align: middle; margin-right: 0.35rem; }
+
     /* Category pills */
     .category-pills { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.6rem; }
     .category-pill { background: #e2e8f0; color: #475569; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 9999px; white-space: nowrap; }

@@ -91,6 +91,7 @@ admin.post("/admin/bills", async (c) => {
     notes: (body.notes as string) || undefined,
     change_hash: changeHash,
     legiscan_session_id: legiscanSessionId,
+    urgent: body.urgent ? 1 : 0,
     category_ids: categoryIds,
   });
 
@@ -155,6 +156,7 @@ admin.post("/admin/bills/:id", async (c) => {
     notes: (body.notes as string) || undefined,
     ...(changeHash ? { change_hash: changeHash } : {}),
     ...(legiscanSessionId ? { legiscan_session_id: legiscanSessionId } : {}),
+    urgent: body.urgent ? 1 : 0,
     category_ids: categoryIds,
   });
 

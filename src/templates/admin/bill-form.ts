@@ -151,6 +151,10 @@ export function adminBillFormPage(options: {
             <input type="date" id="f-session-end-date" name="session_end_date" value="${escHtml(bill?.session_end_date ?? "")}">
           </div>
         </div>
+        <label class="checkbox-item" style="font-size:0.875rem;font-weight:600;color:#92400e;margin-top:1rem;">
+          <input type="checkbox" name="urgent" value="1"${bill?.urgent ? " checked" : ""}>
+          Action Alert — mark this bill as needing urgent attention
+        </label>
       </div>
 
       <div class="form-section">

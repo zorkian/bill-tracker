@@ -44,7 +44,8 @@ export function billDetailPage(bill: BillWithCategories, options?: { isAdmin?: b
       <a href="/" class="back-link" style="margin-bottom:0">← All Bills</a>
       ${options?.isAdmin ? `<a href="/admin/bills/${bill.id}/edit" class="btn btn-sm btn-secondary">Edit Bill</a>` : ""}
     </div>
-    <div class="detail-card">
+    ${bill.urgent ? `<div role="alert" style="background:#dc2626;color:#fff;font-weight:700;text-align:center;padding:0.6rem 1rem;border-radius:8px 8px 0 0;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.05em;">Action Alert</div>` : ""}
+    <div class="detail-card"${bill.urgent ? ' style="border-radius:0 0 8px 8px;border-top:none;background:#fef2f2;"' : ""}>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap;">
         <div>
           <h1 style="font-size:1.25rem;font-weight:700;color:#1e293b;margin-bottom:0.25rem">

@@ -133,16 +133,24 @@ export function publicIndexPage(bills: BillWithCategories[], categories: Categor
       ? `<a href="${escHtml(bill.legiscan_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">View on Legiscan →</a>`
       : "";
 
+    const urgentStyle = bill.urgent
+      ? "background: #fef2f2; border-top-color: #dc2626; border-right-color: #dc2626; border-bottom-color: #dc2626;"
+      : "";
+    const urgentPrefix = bill.urgent
+      ? `<span class="action-alert-badge">Action Alert</span> `
+      : "";
+
     return `
       <div class="bill-card"
-        style="border-left-color: ${borderColor}; cursor: pointer"
+        style="border-left-color: ${borderColor}; cursor: pointer; ${urgentStyle}"
         data-state="${escHtml(bill.state)}"
         data-status="${escHtml(bill.status_simple)}"
         data-categories="${escHtml(categorySlugList)}"
         data-search="${escHtml(searchText)}"
-        onclick="window.location='/bill/${bill.id}'">
+        onclick="window.location='/bill/${bill.id}'"
+        ${bill.urgent ? 'aria-label="Action Alert: ' + escHtml(cardTitle) + '"' : ""}>
         <div class="bill-card-header">
-          <div class="bill-card-title">${cardTitle}</div>
+          <div class="bill-card-title">${urgentPrefix}${cardTitle}</div>
           <span class="status-badge ${badgeClass}">${escHtml(bill.status_simple)}</span>
         </div>
         ${bill.title ? `<div class="bill-card-name">${escHtml(bill.title)}</div>` : ""}

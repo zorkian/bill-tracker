@@ -21,6 +21,7 @@ export interface Bill {
   notes: string | null;
   change_hash: string | null;
   legiscan_session_id: number | null;
+  urgent: number;
   created_at: string;
   updated_at: string;
 }
