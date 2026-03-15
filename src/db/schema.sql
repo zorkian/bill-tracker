@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS bills (
   change_hash TEXT,
   legiscan_session_id INTEGER,
   urgent INTEGER NOT NULL DEFAULT 0,
+  lawsuit_citation TEXT,
+  recap_docket_url TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(state, bill_number)

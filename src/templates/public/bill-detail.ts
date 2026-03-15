@@ -70,6 +70,12 @@ export function billDetailPage(bill: BillWithCategories, options?: { isAdmin?: b
         ${bill.last_action_date ? detailRow("Last Action Date", formatDate(bill.last_action_date)) : ""}
         ${bill.last_action_description ? detailRow("Last Action", bill.last_action_description) : ""}
         ${bill.session_end_date ? detailRow("Session End Date", formatDate(bill.session_end_date)) : ""}
+        ${bill.lawsuit_citation ? detailRow("Lawsuit", bill.lawsuit_citation) : ""}
+        ${bill.recap_docket_url ? `
+        <div class="detail-row">
+          <div class="detail-label">Court Docket</div>
+          <div class="detail-value"><a href="${escHtml(bill.recap_docket_url)}" target="_blank" rel="noopener">View on RECAP / CourtListener →</a></div>
+        </div>` : ""}
         ${detailRow("Last Updated", formatDate(bill.updated_at))}
         ${bill.legiscan_url ? `
         <div class="detail-row">

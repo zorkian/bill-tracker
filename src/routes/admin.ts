@@ -9,7 +9,7 @@ import {
   updateBill,
   deleteBill,
 } from "../services/bills";
-import { getAllCategories } from "../services/categories";
+import { getAllCategories, createCategory, updateCategory, deleteCategory } from "../services/categories";
 import { adminBillListPage } from "../templates/admin/bill-list";
 import { adminBillFormPage } from "../templates/admin/bill-form";
 import { adminBillDeletePage } from "../templates/admin/bill-delete";
@@ -26,6 +26,7 @@ import {
 import { adminUserListPage } from "../templates/admin/user-list";
 import { adminUserFormPage } from "../templates/admin/user-form";
 import { adminPasswordFormPage } from "../templates/admin/password-form";
+import { adminCategoryListPage } from "../templates/admin/category-list";
 
 const admin = new Hono<{ Bindings: Bindings }>();
 
@@ -92,6 +93,8 @@ admin.post("/admin/bills", async (c) => {
     change_hash: changeHash,
     legiscan_session_id: legiscanSessionId,
     urgent: body.urgent ? 1 : 0,
+    lawsuit_citation: (body.lawsuit_citation as string) || undefined,
+    recap_docket_url: (body.recap_docket_url as string) || undefined,
     category_ids: categoryIds,
   });
 
@@ -157,6 +160,8 @@ admin.post("/admin/bills/:id", async (c) => {
     ...(changeHash ? { change_hash: changeHash } : {}),
     ...(legiscanSessionId ? { legiscan_session_id: legiscanSessionId } : {}),
     urgent: body.urgent ? 1 : 0,
+    lawsuit_citation: (body.lawsuit_citation as string) || undefined,
+    recap_docket_url: (body.recap_docket_url as string) || undefined,
     category_ids: categoryIds,
   });
 
@@ -314,6 +319,54 @@ admin.post("/admin/password", async (c) => {
   }
 
   return c.html(adminPasswordFormPage({ success: "Password changed successfully.", role: session.role }));
+});
+
+// Category management (admin only)
+admin.use("/admin/categories/*", requireAdmin);
+admin.use("/admin/categories", requireAdmin);
+
+admin.get("/admin/categories", async (c) => {
+  const categories = await getAllCategories(c.env.DB);
+  const session = c.get("session");
+  return c.html(adminCategoryListPage(categories, { role: session.role }));
+});
+
+admin.post("/admin/categories", async (c) => {
+  const session = c.get("session");
+  const body = await c.req.parseBody();
+  const name = (body.name as string || "").trim();
+
+  if (!name) {
+    const categories = await getAllCategories(c.env.DB);
+    return c.html(adminCategoryListPage(categories, { error: "Name is required.", role: session.role }));
+  }
+
+  try {
+    await createCategory(c.env.DB, name);
+  } catch {
+    const categories = await getAllCategories(c.env.DB);
+    return c.html(adminCategoryListPage(categories, { error: "A category with that name already exists.", role: session.role }));
+  }
+  return c.redirect("/admin/categories");
+});
+
+admin.post("/admin/categories/:id", async (c) => {
+  const id = Number(c.req.param("id"));
+  const body = await c.req.parseBody();
+  const name = (body.name as string || "").trim();
+
+  if (name) {
+    try {
+      await updateCategory(c.env.DB, id, name);
+    } catch { /* slug conflict — ignore */ }
+  }
+  return c.redirect("/admin/categories");
+});
+
+admin.post("/admin/categories/:id/delete", async (c) => {
+  const id = Number(c.req.param("id"));
+  await deleteCategory(c.env.DB, id);
+  return c.redirect("/admin/categories");
 });
 
 admin.get("/admin/legiscan-lookup", async (c) => {

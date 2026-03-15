@@ -176,6 +176,7 @@ export function layout(title: string, content: string, options?: { isAdmin?: boo
   const adminNav = `
     <nav>
       <a href="/admin">Bills</a>
+      ${role === "admin" ? '<a href="/admin/categories">Categories</a>' : ""}
       ${role === "admin" ? '<a href="/admin/users">Users</a>' : ""}
       <a href="/admin/password">Password</a>
       <a href="/" target="_blank">View Site</a>

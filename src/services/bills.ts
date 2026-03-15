@@ -17,6 +17,8 @@ export interface CreateBillInput {
   change_hash?: string;
   legiscan_session_id?: number;
   urgent?: number;
+  lawsuit_citation?: string;
+  recap_docket_url?: string;
   category_ids: number[];
 }
 
@@ -30,8 +32,9 @@ export async function createBill(db: D1Database, input: CreateBillInput): Promis
         status_simple, status_detail, date_introduced, last_action_date,
         last_action_description, session_end_date, social_media_definition, notes,
         change_hash, legiscan_session_id, urgent,
+        lawsuit_citation, recap_docket_url,
         created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       input.state, input.bill_number, input.title ?? null,
@@ -42,6 +45,7 @@ export async function createBill(db: D1Database, input: CreateBillInput): Promis
       input.social_media_definition ?? null, input.notes ?? null,
       input.change_hash ?? null, input.legiscan_session_id ?? null,
       input.urgent ?? 0,
+      input.lawsuit_citation ?? null, input.recap_docket_url ?? null,
       now, now
     )
     .run();
@@ -109,6 +113,7 @@ export async function updateBill(db: D1Database, id: number, input: UpdateBillIn
     "status_simple", "status_detail", "date_introduced", "last_action_date",
     "last_action_description", "session_end_date", "social_media_definition", "notes",
     "change_hash", "legiscan_session_id", "urgent",
+    "lawsuit_citation", "recap_docket_url",
   ];
 
   for (const key of settable) {

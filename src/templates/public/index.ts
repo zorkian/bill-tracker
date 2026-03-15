@@ -156,6 +156,7 @@ export function publicIndexPage(bills: BillWithCategories[], categories: Categor
         ${bill.title ? `<div class="bill-card-name">${escHtml(bill.title)}</div>` : ""}
         ${lastActionText || sessionEndText ? `<div class="bill-card-subtitle">${lastActionText}${sessionEndText}</div>` : ""}
         ${categoryPills}
+        ${bill.lawsuit_citation ? `<div class="bill-card-subtitle" style="font-style:italic">${escHtml(bill.lawsuit_citation)}</div>` : ""}
         ${definitionBox}
         ${notesCallout}
         <div class="bill-card-footer">

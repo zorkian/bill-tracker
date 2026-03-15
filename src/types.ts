@@ -22,6 +22,8 @@ export interface Bill {
   change_hash: string | null;
   legiscan_session_id: number | null;
   urgent: number;
+  lawsuit_citation: string | null;
+  recap_docket_url: string | null;
   created_at: string;
   updated_at: string;
 }

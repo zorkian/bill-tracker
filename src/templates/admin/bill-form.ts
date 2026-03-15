@@ -165,6 +165,21 @@ export function adminBillFormPage(options: {
       </div>
 
       <div class="form-section">
+        <h2>Lawsuit Information</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="f-lawsuit-citation">Citation to Lawsuit</label>
+            <input type="text" id="f-lawsuit-citation" name="lawsuit_citation" value="${escHtml(bill?.lawsuit_citation ?? "")}" placeholder="e.g. Netchoice v. Wilson, 3:26-cv-00543 (D.S.C.)">
+          </div>
+          <div class="form-group">
+            <label for="f-recap-docket-url">RECAP Docket URL</label>
+            <input type="url" id="f-recap-docket-url" name="recap_docket_url" value="${escHtml(bill?.recap_docket_url ?? "")}" placeholder="https://www.courtlistener.com/docket/...">
+          </div>
+        </div>
+        <span class="form-hint">For bills with lawsuit statuses. Appeals may have separate RECAP dockets.</span>
+      </div>
+
+      <div class="form-section">
         <h2>Social Media Definition</h2>
         <div class="form-group">
           <label for="f-definition">Definition used in this bill</label>
