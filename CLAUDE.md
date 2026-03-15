@@ -66,6 +66,7 @@ Migrations live in `src/db/migrations/` as numbered SQL files (e.g., `002-add-le
 
 - Never run `DELETE FROM <table>` without a `WHERE` clause against production
 - Never `DROP` a table or column in production — columns can be left unused if deprecated
+- **Never use DROP TABLE + RENAME as a migration strategy** — SQLite `ON DELETE CASCADE` foreign keys will cascade-delete rows in other tables when the referenced table is dropped. This already caused data loss once (bill_categories wiped when categories was dropped/recreated to remove a unique constraint). Leave unused columns/constraints alone.
 - Never run `db:schema` or `db:seed` against production (they're for local dev only)
 - Never use `wrangler d1 execute --remote` without backing up first
 
