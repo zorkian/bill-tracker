@@ -32,8 +32,8 @@ describe("bills service", () => {
     const bill = await getBillById(env.DB, created.id);
     expect(bill).not.toBeNull();
     expect(bill!.categories).toHaveLength(2);
-    expect(bill!.categories.map((c) => c.slug)).toContain("age-verification");
-    expect(bill!.categories.map((c) => c.slug)).toContain("minimum-age-ban");
+    expect(bill!.categories.map((c) => c.name)).toContain("Age Verification");
+    expect(bill!.categories.map((c) => c.name)).toContain("Minimum Age Ban");
   });
 
   it("gets all bills with categories", async () => {

@@ -10,7 +10,7 @@ export function adminCategoryListPage(categories: Category[], options?: { error?
           <button type="submit" class="btn btn-secondary btn-sm">Rename</button>
         </form>
       </td>
-      <td style="color:#94a3b8;font-size:0.8rem">${escHtml(cat.slug)}</td>
+      <td style="color:#94a3b8;font-size:0.8rem">${cat.id}</td>
       <td>
         <form method="POST" action="/admin/categories/${cat.id}/delete" style="display:inline" onsubmit="return confirm('Delete category \\'${escHtml(cat.name).replace(/'/g, "\\\\'")}\\' and remove it from all bills?')">
           <button type="submit" class="btn btn-danger btn-sm">Delete</button>
@@ -45,7 +45,7 @@ export function adminCategoryListPage(categories: Category[], options?: { error?
       <thead>
         <tr>
           <th>Name</th>
-          <th>Slug</th>
+          <th>ID</th>
           <th>Actions</th>
         </tr>
       </thead>

@@ -358,7 +358,7 @@ admin.post("/admin/categories/:id", async (c) => {
   if (name) {
     try {
       await updateCategory(c.env.DB, id, name);
-    } catch { /* slug conflict — ignore */ }
+    } catch { /* name conflict — ignore */ }
   }
   return c.redirect("/admin/categories");
 });

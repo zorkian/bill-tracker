@@ -46,7 +46,7 @@ export function publicIndexPage(bills: BillWithCategories[], categories: Categor
   ).join("");
 
   const categoryOptions = categories.map(c =>
-    `<option value="${escHtml(c.slug)}">${escHtml(c.name)}</option>`
+    `<option value="${c.id}">${escHtml(c.name)}</option>`
   ).join("");
 
   const filterBar = `
@@ -94,7 +94,7 @@ export function publicIndexPage(bills: BillWithCategories[], categories: Categor
     const cardTitle = `${escHtml(stateName)} — ${escHtml(bill.bill_number)}`;
     const badgeClass = statusClass(bill.status_simple);
     const borderColor = getBorderColor(bill.status_simple);
-    const categorySlugList = bill.categories.map(c => c.slug).join(",");
+    const categoryIdList = bill.categories.map(c => c.id).join(",");
     const searchText = [
       bill.state,
       stateName,
@@ -145,7 +145,7 @@ export function publicIndexPage(bills: BillWithCategories[], categories: Categor
         style="border-left-color: ${borderColor}; cursor: pointer; ${urgentStyle}"
         data-state="${escHtml(bill.state)}"
         data-status="${escHtml(bill.status_simple)}"
-        data-categories="${escHtml(categorySlugList)}"
+        data-categories="${categoryIdList}"
         data-search="${escHtml(searchText)}"
         onclick="window.location='/bill/${bill.id}'"
         ${bill.urgent ? 'aria-label="Action Alert: ' + escHtml(cardTitle) + '"' : ""}>
