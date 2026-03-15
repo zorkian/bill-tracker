@@ -5,6 +5,9 @@ export const STATUS_COLORS: Record<StatusSimple, { bg: string; text: string; bor
   "Passed One Chamber": { bg: "#dbeafe", text: "#1d4ed8", border: "#2563eb" },
   "Passed Both Chambers": { bg: "#dbeafe", text: "#1d4ed8", border: "#2563eb" },
   "Signed Into Law": { bg: "#dcfce7", text: "#15803d", border: "#16a34a" },
+  "Lawsuit Filed, Temporarily Enjoined": { bg: "#fef3c7", text: "#92400e", border: "#f59e0b" },
+  "Lawsuit Filed, Law in Effect": { bg: "#dcfce7", text: "#15803d", border: "#16a34a" },
+  "Law Ruled Unconstitutional": { bg: "#fee2e2", text: "#dc2626", border: "#dc2626" },
   "Vetoed": { bg: "#fee2e2", text: "#dc2626", border: "#dc2626" },
   "Failed": { bg: "#fee2e2", text: "#dc2626", border: "#dc2626" },
 };
@@ -29,5 +32,7 @@ export const STATES = ["US", ...Object.keys(STATE_NAMES).filter(s => s !== "US")
 
 export const STATUSES = [
   "Introduced", "Passed One Chamber", "Passed Both Chambers",
-  "Signed Into Law", "Vetoed", "Failed",
+  "Signed Into Law", "Lawsuit Filed, Temporarily Enjoined",
+  "Lawsuit Filed, Law in Effect", "Law Ruled Unconstitutional",
+  "Vetoed", "Failed",
 ] as const;

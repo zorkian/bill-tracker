@@ -13,7 +13,7 @@ import { getAllCategories } from "../services/categories";
 import { adminBillListPage } from "../templates/admin/bill-list";
 import { adminBillFormPage } from "../templates/admin/bill-form";
 import { adminBillDeletePage } from "../templates/admin/bill-delete";
-import { searchBill } from "../services/legiscan";
+import { searchBill, getBillDetails } from "../services/legiscan";
 import {
   getAllUsers,
   getUserById,
@@ -62,6 +62,19 @@ admin.post("/admin/bills", async (c) => {
   const legiscanBillIdRaw = body.legiscan_bill_id as string;
   const legiscanBillId = legiscanBillIdRaw ? Number(legiscanBillIdRaw) : undefined;
 
+  // Auto-fetch change_hash and session_id from LegiScan when linking a bill
+  let changeHash: string | undefined;
+  let legiscanSessionId: number | undefined;
+  if (legiscanBillId && !isNaN(legiscanBillId) && c.env.LEGISCAN_API_KEY) {
+    try {
+      const details = await getBillDetails(c.env.LEGISCAN_API_KEY, legiscanBillId);
+      if (details) {
+        changeHash = details.change_hash ?? undefined;
+        legiscanSessionId = details.session_id ?? undefined;
+      }
+    } catch { /* non-critical */ }
+  }
+
   await createBill(c.env.DB, {
     state: body.state as string,
     bill_number: body.bill_number as string,
@@ -76,6 +89,8 @@ admin.post("/admin/bills", async (c) => {
     session_end_date: (body.session_end_date as string) || undefined,
     social_media_definition: (body.social_media_definition as string) || undefined,
     notes: (body.notes as string) || undefined,
+    change_hash: changeHash,
+    legiscan_session_id: legiscanSessionId,
     category_ids: categoryIds,
   });
 
@@ -108,11 +123,27 @@ admin.post("/admin/bills/:id", async (c) => {
   const legiscanBillIdRaw = body.legiscan_bill_id as string;
   const legiscanBillId = legiscanBillIdRaw ? Number(legiscanBillIdRaw) : undefined;
 
+  const existingBill = await getBillById(c.env.DB, id);
+
+  // Fetch change_hash/session_id when legiscan_bill_id is newly set or changed
+  let changeHash: string | undefined;
+  let legiscanSessionId: number | undefined;
+  const newLegiscanId = legiscanBillId && !isNaN(legiscanBillId) ? legiscanBillId : undefined;
+  if (newLegiscanId && newLegiscanId !== existingBill?.legiscan_bill_id && c.env.LEGISCAN_API_KEY) {
+    try {
+      const details = await getBillDetails(c.env.LEGISCAN_API_KEY, newLegiscanId);
+      if (details) {
+        changeHash = details.change_hash ?? undefined;
+        legiscanSessionId = details.session_id ?? undefined;
+      }
+    } catch { /* non-critical */ }
+  }
+
   await updateBill(c.env.DB, id, {
     state: body.state as string,
     bill_number: body.bill_number as string,
     title: (body.title as string) || undefined,
-    legiscan_bill_id: legiscanBillId && !isNaN(legiscanBillId) ? legiscanBillId : undefined,
+    legiscan_bill_id: newLegiscanId,
     legiscan_url: (body.legiscan_url as string) || undefined,
     status_simple: body.status_simple as string,
     status_detail: (body.status_detail as string) || undefined,
@@ -122,6 +153,8 @@ admin.post("/admin/bills/:id", async (c) => {
     session_end_date: (body.session_end_date as string) || undefined,
     social_media_definition: (body.social_media_definition as string) || undefined,
     notes: (body.notes as string) || undefined,
+    ...(changeHash ? { change_hash: changeHash } : {}),
+    ...(legiscanSessionId ? { legiscan_session_id: legiscanSessionId } : {}),
     category_ids: categoryIds,
   });
 

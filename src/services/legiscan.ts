@@ -12,6 +12,13 @@ export interface LegiscanBillResult {
   last_action_description: string | null;
   legiscan_url: string | null;
   session_end_date: string | null;
+  change_hash: string | null;
+  session_id: number | null;
+}
+
+export interface MasterListEntry {
+  bill_id: number;
+  change_hash: string;
 }
 
 const STATUS_MAP: Record<number, string> = {
@@ -25,6 +32,30 @@ const STATUS_MAP: Record<number, string> = {
 
 export function mapLegiscanStatus(code: number): string | null {
   return STATUS_MAP[code] ?? null;
+}
+
+export async function getMasterListRaw(
+  apiKey: string,
+  sessionId: number
+): Promise<MasterListEntry[]> {
+  const url = `${LEGISCAN_BASE}?key=${apiKey}&op=getMasterListRaw&id=${sessionId}`;
+  const res = await fetch(url);
+  const data = await res.json() as Record<string, unknown>;
+
+  if (data.status !== "OK") return [];
+
+  const masterlist = data.masterlist as Record<string, unknown>;
+  const entries: MasterListEntry[] = [];
+
+  for (const [key, value] of Object.entries(masterlist)) {
+    if (key === "session") continue;
+    const entry = value as { bill_id: number; change_hash: string };
+    if (entry.bill_id && entry.change_hash) {
+      entries.push({ bill_id: entry.bill_id, change_hash: entry.change_hash });
+    }
+  }
+
+  return entries;
 }
 
 export async function searchBill(
@@ -67,9 +98,10 @@ export async function getBillDetails(
     title: string;
     status: number;
     status_desc: string;
+    change_hash?: string;
     url?: string;
     history?: Array<{ date: string; action: string; importance: number; type_id?: number }>;
-    session?: { session_title?: string; sine_die?: string; end_date?: string };
+    session?: { session_id?: number; session_title?: string; sine_die?: string; end_date?: string };
   };
 
   const signed = bill.history?.some((h) => h.type_id === 28);
@@ -92,5 +124,7 @@ export async function getBillDetails(
     last_action_description: lastAction?.action ?? null,
     legiscan_url: bill.url ?? null,
     session_end_date: sessionEndDate,
+    change_hash: bill.change_hash ?? null,
+    session_id: bill.session?.session_id ?? null,
   };
 }

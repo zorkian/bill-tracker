@@ -19,6 +19,8 @@ export interface Bill {
   session_end_date: string | null;
   social_media_definition: string | null;
   notes: string | null;
+  change_hash: string | null;
+  legiscan_session_id: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -48,5 +50,8 @@ export type StatusSimple =
   | "Passed One Chamber"
   | "Passed Both Chambers"
   | "Signed Into Law"
+  | "Lawsuit Filed, Temporarily Enjoined"
+  | "Lawsuit Filed, Law in Effect"
+  | "Law Ruled Unconstitutional"
   | "Vetoed"
   | "Failed";

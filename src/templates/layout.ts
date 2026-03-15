@@ -211,6 +211,7 @@ export function layout(title: string, content: string, options?: { isAdmin?: boo
   </main>
   <footer>
     <p>A project by <a href="https://www.dreamwidth.org/" target="_blank" rel="noopener">Dreamwidth Studios</a></p>
+    <p style="margin-top:0.35rem">Legislative data provided by <a href="https://legiscan.com/" target="_blank" rel="noopener">LegiScan</a> under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></p>
   </footer>
 </body>
 </html>`;

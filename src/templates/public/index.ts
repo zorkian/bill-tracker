@@ -21,13 +21,21 @@ function getBorderColor(status: string): string {
 
 export function publicIndexPage(bills: BillWithCategories[], categories: Category[]): string {
   const totalCount = bills.length;
-  const signedCount = bills.filter(b => b.status_simple === "Signed Into Law").length;
+  const signedCount = bills.filter(b =>
+    b.status_simple === "Signed Into Law" ||
+    b.status_simple === "Lawsuit Filed, Temporarily Enjoined" ||
+    b.status_simple === "Lawsuit Filed, Law in Effect"
+  ).length;
   const inProgressCount = bills.filter(b =>
     b.status_simple === "Introduced" ||
     b.status_simple === "Passed One Chamber" ||
     b.status_simple === "Passed Both Chambers"
   ).length;
-  const failedCount = bills.filter(b => b.status_simple === "Failed" || b.status_simple === "Vetoed").length;
+  const failedCount = bills.filter(b =>
+    b.status_simple === "Failed" ||
+    b.status_simple === "Vetoed" ||
+    b.status_simple === "Law Ruled Unconstitutional"
+  ).length;
 
   const stateOptions = STATES.map(s =>
     `<option value="${escHtml(s)}">${escHtml(STATE_NAMES[s] ?? s)}</option>`
@@ -122,16 +130,17 @@ export function publicIndexPage(bills: BillWithCategories[], categories: Categor
       : "";
 
     const legiscanLink = bill.legiscan_url
-      ? `<a href="${escHtml(bill.legiscan_url)}" target="_blank" rel="noopener">View on Legiscan →</a>`
+      ? `<a href="${escHtml(bill.legiscan_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">View on Legiscan →</a>`
       : "";
 
     return `
-      <a href="/bill/${bill.id}" class="bill-card"
-        style="border-left-color: ${borderColor}"
+      <div class="bill-card"
+        style="border-left-color: ${borderColor}; cursor: pointer"
         data-state="${escHtml(bill.state)}"
         data-status="${escHtml(bill.status_simple)}"
         data-categories="${escHtml(categorySlugList)}"
-        data-search="${escHtml(searchText)}">
+        data-search="${escHtml(searchText)}"
+        onclick="window.location='/bill/${bill.id}'">
         <div class="bill-card-header">
           <div class="bill-card-title">${cardTitle}</div>
           <span class="status-badge ${badgeClass}">${escHtml(bill.status_simple)}</span>
@@ -145,7 +154,7 @@ export function publicIndexPage(bills: BillWithCategories[], categories: Categor
           <span>Last updated ${formatDate(bill.updated_at)}</span>
           ${legiscanLink}
         </div>
-      </a>
+      </div>
     `;
   }).join("");
 

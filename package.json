@@ -11,7 +11,8 @@
     "test": "vitest run",
     "deploy": "wrangler deploy",
     "db:schema": "wrangler d1 execute sm-bill-tracker --local --file=src/db/schema.sql",
-    "db:seed": "wrangler d1 execute sm-bill-tracker --local --file=src/db/seed.sql"
+    "db:seed": "wrangler d1 execute sm-bill-tracker --local --file=src/db/seed.sql",
+    "db:backup": "mkdir -p backups && wrangler d1 export sm-bill-tracker --remote --output=backups/backup-$(date +%Y%m%d-%H%M%S).sql"
   },
   "keywords": [],
   "author": "",

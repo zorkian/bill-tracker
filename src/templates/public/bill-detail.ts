@@ -19,7 +19,7 @@ function detailRow(label: string, value: string | null | undefined, raw = false)
   `;
 }
 
-export function billDetailPage(bill: BillWithCategories): string {
+export function billDetailPage(bill: BillWithCategories, options?: { isAdmin?: boolean }): string {
   const stateName = STATE_NAMES[bill.state] ?? bill.state;
   const badgeClass = statusClass(bill.status_simple);
 
@@ -40,7 +40,10 @@ export function billDetailPage(bill: BillWithCategories): string {
     : "";
 
   const content = `
-    <a href="/" class="back-link">← All Bills</a>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <a href="/" class="back-link" style="margin-bottom:0">← All Bills</a>
+      ${options?.isAdmin ? `<a href="/admin/bills/${bill.id}/edit" class="btn btn-sm btn-secondary">Edit Bill</a>` : ""}
+    </div>
     <div class="detail-card">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap;">
         <div>

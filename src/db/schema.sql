@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS bills (
   session_end_date TEXT,
   social_media_definition TEXT,
   notes TEXT,
+  change_hash TEXT,
+  legiscan_session_id INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(state, bill_number)
