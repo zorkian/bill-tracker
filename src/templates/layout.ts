@@ -127,6 +127,7 @@ export function layout(title: string, content: string, options?: { isAdmin?: boo
     /* Category pills */
     .category-pills { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.6rem; }
     .category-pill { background: var(--pill-bg); color: var(--pill-fg); font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 9999px; white-space: nowrap; }
+    .category-pill-expandable:hover { background: var(--input-border); }
 
     /* Definition box */
     .definition-box { background: var(--def-bg); border: 1px solid var(--def-border); border-radius: 6px; padding: 0.6rem 0.75rem; margin-bottom: 0.6rem; font-size: 0.8rem; color: var(--muted3); }

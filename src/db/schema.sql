@@ -19,6 +19,10 @@ CREATE TABLE IF NOT EXISTS bills (
   enforcement_status TEXT,
   lawsuit_citation TEXT,
   recap_docket_url TEXT,
+  ai_notes TEXT,
+  ai_social_media_definition TEXT,
+  status_override TEXT,
+  title_override TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(state, bill_number)
@@ -34,6 +38,7 @@ CREATE TABLE IF NOT EXISTS categories (
 CREATE TABLE IF NOT EXISTS bill_categories (
   bill_id INTEGER NOT NULL REFERENCES bills(id) ON DELETE CASCADE,
   category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  reason TEXT,
   PRIMARY KEY (bill_id, category_id)
 );
 

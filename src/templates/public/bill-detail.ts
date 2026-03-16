@@ -1,6 +1,6 @@
 import { layout, escHtml, statusClass } from "../layout";
 import { STATE_NAMES } from "../../constants";
-import type { BillWithCategories } from "../../types";
+import { displayStatus, displayTitle, type BillWithCategories } from "../../types";
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -21,18 +21,33 @@ function detailRow(label: string, value: string | null | undefined, raw = false)
 
 export function billDetailPage(bill: BillWithCategories, options?: { isAdmin?: boolean }): string {
   const stateName = STATE_NAMES[bill.state] ?? bill.state;
-  const badgeClass = statusClass(bill.status_simple);
+  const effectiveStatus = displayStatus(bill);
+  const effectiveTitle = displayTitle(bill);
+  const badgeClass = statusClass(effectiveStatus);
 
+  const hasAnyReasons = bill.categories.some(c => c.reason);
   const categoryPills = bill.categories.length > 0
-    ? `<div class="category-pills">${bill.categories.map(c => `<span class="category-pill">${escHtml(c.name)}</span>`).join("")}</div>`
+    ? `<div class="category-pills">${bill.categories.map((c, i) => {
+        if (c.reason) {
+          return `<span class="category-pill category-pill-expandable" onclick="var r=document.getElementById('cat-reason-${i}');r.style.display=r.style.display==='none'?'block':'none'" style="cursor:pointer">${escHtml(c.name)} <span style="font-size:0.6rem;opacity:0.7">▼</span></span>`;
+        }
+        return `<span class="category-pill">${escHtml(c.name)}</span>`;
+      }).join("")}</div>
+      ${bill.categories.map((c, i) => c.reason
+        ? `<div id="cat-reason-${i}" style="display:none;margin-top:0.35rem;margin-bottom:0.35rem;padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted3,#475569);background:var(--def-bg,#f8fafc);border:1px solid var(--def-border,#e2e8f0);border-radius:6px"><strong style="color:var(--muted,#64748b);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:0.2rem">${escHtml(c.name)}</strong>${escHtml(c.reason)}</div>`
+        : ""
+      ).join("")}
+      ${hasAnyReasons ? '<div style="font-size:0.7rem;color:var(--muted2,#94a3b8);margin-top:0.25rem">Click a category to see why it applies</div>' : ""}`
     : "";
 
-  const definitionBox = bill.social_media_definition
-    ? `<div class="definition-box"><strong>Social Media Definition</strong>${escHtml(bill.social_media_definition)}</div>`
+  const defText = bill.social_media_definition ?? bill.ai_social_media_definition;
+  const definitionBox = defText
+    ? `<div class="definition-box"><strong>Social Media Definition</strong>${escHtml(defText)}</div>`
     : "";
 
-  const notesCallout = bill.notes
-    ? `<div class="notes-callout"><strong>Notes</strong>${escHtml(bill.notes)}</div>`
+  const notesText = bill.notes ?? bill.ai_notes;
+  const notesCallout = notesText
+    ? `<div class="notes-callout"><strong>Notes</strong>${escHtml(notesText)}</div>`
     : "";
 
   const legiscanLink = bill.legiscan_url
@@ -51,10 +66,10 @@ export function billDetailPage(bill: BillWithCategories, options?: { isAdmin?: b
           <h1 style="font-size:1.25rem;font-weight:700;color:var(--fg);margin-bottom:0.25rem">
             ${escHtml(stateName)} — ${escHtml(bill.bill_number)}
           </h1>
-          ${bill.title ? `<p style="color:var(--muted3);font-size:0.9rem">${escHtml(bill.title)}</p>` : ""}
+          ${effectiveTitle ? `<p style="color:var(--muted3);font-size:0.9rem">${escHtml(effectiveTitle)}</p>` : ""}
         </div>
         <div>
-          <span class="status-badge ${badgeClass}" style="font-size:0.8rem;padding:0.3rem 0.7rem">${escHtml(bill.status_simple)}</span>
+          <span class="status-badge ${badgeClass}" style="font-size:0.8rem;padding:0.3rem 0.7rem">${escHtml(effectiveStatus)}</span>
           ${bill.enforcement_status ? `<span class="status-badge enforcement-${bill.enforcement_status.toLowerCase().replace(/\s+/g, "-")}" style="font-size:0.8rem;padding:0.3rem 0.7rem;margin-left:0.35rem">${escHtml(bill.enforcement_status)}</span>` : ""}
         </div>
       </div>
@@ -67,7 +82,7 @@ export function billDetailPage(bill: BillWithCategories, options?: { isAdmin?: b
       <div style="margin-top:1rem;">
         ${detailRow("State", stateName)}
         ${detailRow("Bill Number", bill.bill_number)}
-        ${detailRow("Legislative Status", bill.status_simple)}
+        ${detailRow("Legislative Status", effectiveStatus)}
         ${bill.enforcement_status ? detailRow("Enforcement", bill.enforcement_status) : ""}
         ${bill.status_detail ? detailRow("Status Detail", bill.status_detail) : ""}
         ${bill.date_introduced ? detailRow("Date Introduced", formatDate(bill.date_introduced)) : ""}

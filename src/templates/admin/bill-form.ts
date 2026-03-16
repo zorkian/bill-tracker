@@ -2,8 +2,6 @@ import { layout, escHtml } from "../layout";
 import { STATES, STATUSES, STATE_NAMES, ENFORCEMENT_STATUSES } from "../../constants";
 import type { BillWithCategories, Category } from "../../types";
 import type { SyncLogEntry } from "../../services/sync";
-import type { AnalysisResult } from "../../services/analyze";
-
 export function adminBillFormPage(options: {
   bill?: BillWithCategories;
   categories: Category[];
@@ -11,17 +9,13 @@ export function adminBillFormPage(options: {
   role?: string;
   syncLog?: SyncLogEntry[];
   syncMessage?: string;
-  analysis?: AnalysisResult;
-  analysisMessage?: string;
 }): string {
-  const { bill, categories, error, role, syncLog, syncMessage, analysis, analysisMessage } = options;
+  const { bill, categories, error, role, syncLog, syncMessage } = options;
   const isEdit = !!bill;
   const hasLegiscan = !!(bill?.legiscan_bill_id);
   const pageTitle = "Admin - " + (isEdit ? "Edit" : "Add") + " Bill";
   const formAction = isEdit ? `/admin/bills/${bill.id}` : "/admin/bills";
-  const billCategoryIds = new Set(
-    analysis ? analysis.category_ids : (bill?.categories ?? []).map(c => c.id)
-  );
+  const billCategoryIds = new Set((bill?.categories ?? []).map(c => c.id));
 
   const stateOptions = STATES.map(s => {
     const selected = bill?.state === s ? " selected" : "";
@@ -33,19 +27,28 @@ export function adminBillFormPage(options: {
     return `<option value="${escHtml(s)}"${selected}>${escHtml(s)}</option>`;
   }).join("");
 
-  const activeEnforcement = analysis?.enforcement_status ?? bill?.enforcement_status;
+  const activeEnforcement = bill?.enforcement_status;
   const enforcementOptions = ENFORCEMENT_STATUSES.map(s => {
     const selected = activeEnforcement === s ? " selected" : "";
     return `<option value="${escHtml(s)}"${selected}>${escHtml(s)}</option>`;
   }).join("");
 
+  const reasonsByCategory = new Map(
+    (bill?.categories ?? []).filter((c) => c.reason).map((c) => [c.id, c.reason!])
+  );
+
   const categoryCheckboxes = categories.map(c => {
     const checked = billCategoryIds.has(c.id) ? " checked" : "";
+    const reason = reasonsByCategory.get(c.id) ?? "";
     return `
-      <label class="checkbox-item">
-        <input type="checkbox" name="category_ids" value="${c.id}"${checked}>
-        ${escHtml(c.name)}
-      </label>
+      <div>
+        <label class="checkbox-item">
+          <input type="checkbox" name="category_ids" value="${c.id}"${checked}>
+          ${escHtml(c.name)}
+        </label>
+        ${reason ? `<div style="margin-left:1.25rem;margin-top:0.15rem;margin-bottom:0.25rem;font-size:0.75rem;color:var(--muted,#64748b);font-style:italic">${escHtml(reason)}</div>` : ""}
+        <input type="hidden" name="category_reason_${c.id}" value="${escHtml(reason)}">
+      </div>
     `;
   }).join("");
 
@@ -122,7 +125,6 @@ export function adminBillFormPage(options: {
     </div>
 
     ${error ? `<div class="error-message">${escHtml(error)}</div>` : ""}
-    ${analysisMessage ? `<div class="info-box">${escHtml(analysisMessage)} Review the pre-filled fields below and save when ready.</div>` : ""}
 
     ${quickAddBox}
 
@@ -146,6 +148,24 @@ export function adminBillFormPage(options: {
       <div class="form-section">
         <h2>Our Analysis</h2>
         <div class="form-grid">
+          ${hasLegiscan ? `
+          <div class="form-group">
+            <label for="f-status-override">Status Override</label>
+            <select id="f-status-override" name="status_override">
+              <option value="">— Use LegiScan status —</option>
+              ${STATUSES.map(s => {
+                const sel = bill?.status_override === s ? " selected" : "";
+                return `<option value="${escHtml(s)}"${sel}>${escHtml(s)}</option>`;
+              }).join("")}
+            </select>
+            <span class="form-hint">Override if LegiScan is wrong or slow to update</span>
+          </div>
+          <div class="form-group">
+            <label for="f-title-override">Title Override</label>
+            <input type="text" id="f-title-override" name="title_override" value="${escHtml(bill?.title_override ?? "")}" placeholder="Leave blank to use LegiScan title">
+            <span class="form-hint">A more commonly known name for the bill</span>
+          </div>
+          ` : ""}
           <div class="form-group">
             <label for="f-enforcement">Enforcement Status</label>
             <select id="f-enforcement" name="enforcement_status">
@@ -190,24 +210,38 @@ export function adminBillFormPage(options: {
 
       <div class="form-section">
         <h2>Social Media Definition</h2>
+        ${bill?.ai_social_media_definition ? `
+        <div class="definition-box" style="margin-bottom:0.75rem">
+          <strong>AI-extracted definition</strong>
+          ${escHtml(bill.ai_social_media_definition)}
+        </div>` : ""}
         <div class="form-group">
           <label for="f-definition">Definition used in this bill</label>
-          <textarea id="f-definition" name="social_media_definition" rows="4">${escHtml(analysis?.social_media_definition ?? bill?.social_media_definition ?? "")}</textarea>
-          <span class="form-hint">The specific definition of "social media platform" as written in the bill text.</span>
+          <textarea id="f-definition" name="social_media_definition" rows="4">${escHtml(bill?.social_media_definition ?? "")}</textarea>
+          <span class="form-hint">${bill?.ai_social_media_definition ? "You can use the AI-extracted definition above as a starting point." : "The specific definition of \"social media platform\" as written in the bill text."}</span>
         </div>
       </div>
 
       <div class="form-section">
         <h2>Notes</h2>
+        ${bill?.ai_notes ? `
+        <div class="definition-box" style="margin-bottom:0.75rem">
+          <strong>AI-generated summary</strong>
+          ${escHtml(bill.ai_notes)}
+        </div>` : ""}
         <div class="form-group">
           <label for="f-notes">Editorial notes / analysis</label>
-          <textarea id="f-notes" name="notes" rows="5">${escHtml(analysis?.notes ?? bill?.notes ?? "")}</textarea>
+          <textarea id="f-notes" name="notes" rows="5">${escHtml(bill?.notes ?? "")}</textarea>
+          <span class="form-hint">${bill?.ai_notes ? "You can use the AI summary above as a starting point." : ""}</span>
         </div>
       </div>
 
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Save Bill</button>
-        <a href="/admin" class="btn btn-secondary">Cancel</a>
+      <div class="form-actions" style="justify-content:space-between">
+        <div style="display:flex;gap:0.75rem;align-items:center;">
+          <button type="submit" class="btn btn-primary">Save Bill</button>
+          <a href="/admin" class="btn btn-secondary">Cancel</a>
+        </div>
+        ${isEdit ? `<a href="/admin/bills/${bill.id}/delete" class="btn btn-danger btn-sm">Delete Bill</a>` : ""}
       </div>
     </form>
     ${isEdit && hasLegiscan ? buildSyncSection(bill, syncLog ?? [], syncMessage) : ""}
@@ -323,6 +357,9 @@ function buildSyncSection(bill: BillWithCategories, syncLog: SyncLogEntry[], syn
     no_data: { cls: "error-message", text: "LegiScan returned no data for this bill." },
     error: { cls: "error-message", text: "Sync failed — check the log below for details." },
     no_api_key: { cls: "error-message", text: "LegiScan API key not configured." },
+    cache_cleared: { cls: "info-box", text: "Cached bill text cleared. Next analysis will re-fetch from LegiScan." },
+    relinked: { cls: "info-box", text: "Bill re-linked to LegiScan. Click \"Analyze Bill Text\" to extract categories and definition from the new bill." },
+    analyzed: { cls: "info-box", text: "AI analysis complete. Review the suggested notes and definition below — copy into the editorial fields if useful." },
   };
 
   const msg = syncMessage && syncMessages[syncMessage]
@@ -379,6 +416,9 @@ function buildSyncSection(bill: BillWithCategories, syncLog: SyncLogEntry[], syn
         </form>
         <form method="POST" action="/admin/bills/${bill.id}/analyze" style="display:inline">
           <button type="submit" class="btn btn-primary btn-sm" style="background:#7c3aed">Analyze Bill Text</button>
+        </form>
+        <form method="POST" action="/admin/bills/${bill.id}/clear-text-cache" style="display:inline">
+          <button type="submit" class="btn btn-secondary btn-sm">Clear Cached Text</button>
         </form>
         <span style="font-size:0.8rem;color:var(--muted2,#94a3b8)">
           Hash: ${escHtml(bill.change_hash ?? "none")} · LegiScan ID: ${bill.legiscan_bill_id}

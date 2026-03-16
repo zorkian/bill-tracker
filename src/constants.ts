@@ -12,10 +12,11 @@ export const STATUS_COLORS: Record<StatusSimple, { bg: string; text: string; bor
 export const ENFORCEMENT_COLORS: Record<EnforcementStatus, { bg: string; text: string; border: string }> = {
   "In Effect": { bg: "#dcfce7", text: "#15803d", border: "#16a34a" },
   "Enjoined": { bg: "#fef3c7", text: "#92400e", border: "#f59e0b" },
+  "Partially Enjoined": { bg: "#fef3c7", text: "#92400e", border: "#f59e0b" },
   "Ruled Unconstitutional": { bg: "#fee2e2", text: "#dc2626", border: "#dc2626" },
 };
 
-export const ENFORCEMENT_STATUSES = ["In Effect", "Enjoined", "Ruled Unconstitutional"] as const;
+export const ENFORCEMENT_STATUSES = ["In Effect", "Enjoined", "Partially Enjoined", "Ruled Unconstitutional"] as const;
 
 export const STATE_NAMES: Record<string, string> = {
   US: "Federal", AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas",

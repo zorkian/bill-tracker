@@ -31,6 +31,44 @@ import { syncBillFromLegiscan, getSyncLogForBill, logSync } from "../services/sy
 import { fetchBillText } from "../services/bill-text";
 import { analyzeBillText } from "../services/analyze";
 
+function billFromForm(body: Record<string, unknown>, existingBill: BillWithCategories | null, categoryIds: number[], allCategories: import("../types").Category[]): BillWithCategories {
+  const catSet = new Set(categoryIds);
+  return {
+    ...(existingBill ?? {} as any),
+    state: (body.state as string) ?? existingBill?.state ?? "",
+    bill_number: (body.bill_number as string) ?? existingBill?.bill_number ?? "",
+    title: (body.title as string) || existingBill?.title || null,
+    status_simple: (body.status_simple as string) ?? existingBill?.status_simple ?? "Introduced",
+    status_detail: (body.status_detail as string) || existingBill?.status_detail || null,
+    legiscan_url: (body.legiscan_url as string) || existingBill?.legiscan_url || null,
+    date_introduced: (body.date_introduced as string) || existingBill?.date_introduced || null,
+    last_action_date: (body.last_action_date as string) || existingBill?.last_action_date || null,
+    last_action_description: (body.last_action_description as string) || existingBill?.last_action_description || null,
+    session_end_date: (body.session_end_date as string) || existingBill?.session_end_date || null,
+    social_media_definition: (body.social_media_definition as string) || existingBill?.social_media_definition || null,
+    notes: (body.notes as string) || existingBill?.notes || null,
+    enforcement_status: (body.enforcement_status as string) || existingBill?.enforcement_status || null,
+    status_override: (body.status_override as string) || existingBill?.status_override || null,
+    title_override: (body.title_override as string) || existingBill?.title_override || null,
+    urgent: body.urgent ? 1 : 0,
+    lawsuit_citation: (body.lawsuit_citation as string) || existingBill?.lawsuit_citation || null,
+    recap_docket_url: (body.recap_docket_url as string) || existingBill?.recap_docket_url || null,
+    categories: allCategories.filter(c => catSet.has(c.id)).map(c => ({
+      ...c,
+      reason: (body[`category_reason_${c.id}`] as string) || null,
+    })),
+  };
+}
+
+function buildCategoryReasons(body: Record<string, unknown>, categoryIds: number[]): Record<number, string> {
+  const reasons: Record<number, string> = {};
+  for (const id of categoryIds) {
+    const reason = body[`category_reason_${id}`] as string;
+    if (reason) reasons[id] = reason;
+  }
+  return reasons;
+}
+
 const admin = new Hono<{ Bindings: Bindings }>();
 
 admin.use("/admin/*", requireAuth);
@@ -109,9 +147,12 @@ admin.post("/admin/bills", async (c) => {
     legiscan_session_id: lsData?.session_id ?? null,
     urgent: body.urgent ? 1 : 0,
     enforcement_status: (body.enforcement_status as string) || undefined,
+    status_override: (body.status_override as string) || undefined,
+    title_override: (body.title_override as string) || undefined,
     lawsuit_citation: (body.lawsuit_citation as string) || undefined,
     recap_docket_url: (body.recap_docket_url as string) || undefined,
     category_ids: categoryIds,
+    category_reasons: buildCategoryReasons(body, categoryIds),
   });
 
   return c.redirect("/admin");
@@ -146,6 +187,22 @@ admin.post("/admin/bills/:id/sync", async (c) => {
   return c.redirect(`/admin/bills/${id}/edit?sync=${result.outcome}`);
 });
 
+admin.post("/admin/bills/:id/clear-text-cache", async (c) => {
+  const id = Number(c.req.param("id"));
+  const bill = await getBillById(c.env.DB, id);
+  if (!bill) return c.notFound();
+
+  if (bill.legiscan_bill_id) {
+    const prefix = `bills/${bill.legiscan_bill_id}/`;
+    const listed = await c.env.BILL_TEXTS.list({ prefix });
+    for (const obj of listed.objects) {
+      await c.env.BILL_TEXTS.delete(obj.key);
+    }
+  }
+
+  return c.redirect(`/admin/bills/${id}/edit?sync=cache_cleared`);
+});
+
 admin.post("/admin/bills/:id/analyze", async (c) => {
   const id = Number(c.req.param("id"));
   const bill = await getBillById(c.env.DB, id);
@@ -168,26 +225,36 @@ admin.post("/admin/bills/:id/analyze", async (c) => {
   try {
     const textResult = await fetchBillText(c.env.BILL_TEXTS, c.env.LEGISCAN_API_KEY, bill.legiscan_bill_id);
     if (!textResult) {
-      return c.html(adminBillFormPage({ bill, categories, role: session.role, syncLog, error: "Could not fetch bill text from LegiScan. No text versions available." }));
+      return c.html(adminBillFormPage({ bill, categories, role: session.role, syncLog, error: "No bill text available on LegiScan." }));
     }
 
     const analysis = await analyzeBillText(
       c.env.ANTHROPIC_API_KEY,
-      textResult.text,
+      textResult.base64,
+      textResult.mime,
       categories,
       bill.title ?? bill.bill_number,
       bill.state
     );
 
-    const sourceNote = textResult.source === "r2" ? "cached" : "fetched from LegiScan";
-    return c.html(adminBillFormPage({
-      bill,
-      categories,
-      role: session.role,
-      syncLog,
-      analysis,
-      analysisMessage: `Bill text analyzed (${textResult.type} version, ${sourceNote}).`,
-    }));
+    // Save AI output to separate fields — never overwrites admin's notes/definition
+    await updateBill(c.env.DB, id, {
+      ai_notes: analysis.notes ?? undefined,
+      ai_social_media_definition: analysis.social_media_definition ?? undefined,
+    });
+
+    // Save AI-suggested categories (only if bill has no categories yet)
+    const existingCats = bill.categories.length > 0;
+    if (!existingCats && analysis.category_ids.length > 0) {
+      const reasons: Record<number, string> = {};
+      for (const r of analysis.category_reasons) reasons[r.id] = r.reason;
+      await updateBill(c.env.DB, id, {
+        category_ids: analysis.category_ids,
+        category_reasons: reasons,
+      });
+    }
+
+    return c.redirect(`/admin/bills/${id}/edit?sync=analyzed`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return c.html(adminBillFormPage({ bill, categories, role: session.role, syncLog, error: `Analysis failed: ${msg}` }));
@@ -227,7 +294,8 @@ admin.post("/admin/bills/:id", async (c) => {
         getSyncLogForBill(c.env.DB, id),
       ]);
       const session = c.get("session");
-      return c.html(adminBillFormPage({ bill: existingBill!, categories, role: session.role, syncLog, error: "Could not parse LegiScan URL. Expected format: https://legiscan.com/STATE/bill/BILLNUMBER/YEAR" }));
+      const formBill = billFromForm(body, existingBill, categoryIds, categories);
+      return c.html(adminBillFormPage({ bill: formBill, categories, role: session.role, syncLog, error: "Could not parse LegiScan URL. Expected format: https://legiscan.com/STATE/bill/BILLNUMBER/YEAR" }));
     }
     lsData = await searchBill(c.env.LEGISCAN_API_KEY, parsed.state, parsed.billNumber, parsed.year);
     if (!lsData) {
@@ -236,7 +304,8 @@ admin.post("/admin/bills/:id", async (c) => {
         getSyncLogForBill(c.env.DB, id),
       ]);
       const session = c.get("session");
-      return c.html(adminBillFormPage({ bill: existingBill!, categories, role: session.role, syncLog, error: "Could not find this bill on LegiScan. Check the URL and try again." }));
+      const formBill = billFromForm(body, existingBill, categoryIds, categories);
+      return c.html(adminBillFormPage({ bill: formBill, categories, role: session.role, syncLog, error: "Could not find this bill on LegiScan. Check the URL and try again." }));
     }
     legiscanBillId = lsData.legiscan_bill_id;
   }
@@ -261,14 +330,29 @@ admin.post("/admin/bills/:id", async (c) => {
     ...(lsData ? { legiscan_session_id: lsData.session_id ?? null } : {}),
     urgent: body.urgent ? 1 : 0,
     enforcement_status: (body.enforcement_status as string) || undefined,
+    status_override: (body.status_override as string) || undefined,
+    title_override: (body.title_override as string) || undefined,
     lawsuit_citation: (body.lawsuit_citation as string) || undefined,
     recap_docket_url: (body.recap_docket_url as string) || undefined,
     category_ids: categoryIds,
+    category_reasons: buildCategoryReasons(body, categoryIds),
   });
 
   if (lsData) {
     await logSync(c.env.DB, id, "admin-relink", "updated", existingBill?.change_hash ?? null, lsData.change_hash ?? null,
       JSON.stringify({ legiscan_bill_id: { old: existingBill?.legiscan_bill_id, new: lsData.legiscan_bill_id } }), null);
+
+    // Clear cached text so analysis fetches the new bill's text
+    const prefix = `bills/${lsData.legiscan_bill_id}/`;
+    const oldPrefix = existingBill?.legiscan_bill_id ? `bills/${existingBill.legiscan_bill_id}/` : null;
+    if (oldPrefix) {
+      const listed = await c.env.BILL_TEXTS.list({ prefix: oldPrefix });
+      for (const obj of listed.objects) {
+        await c.env.BILL_TEXTS.delete(obj.key);
+      }
+    }
+
+    return c.redirect(`/admin/bills/${id}/edit?sync=relinked`);
   }
 
   return c.redirect(`/admin/bills/${id}/edit`);

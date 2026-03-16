@@ -1,6 +1,6 @@
 import { layout, escHtml, statusClass } from "../layout";
 import { STATES, STATUSES, STATE_NAMES, STATUS_COLORS, ENFORCEMENT_COLORS, ENFORCEMENT_STATUSES } from "../../constants";
-import type { BillWithCategories, Category, EnforcementStatus } from "../../types";
+import { displayStatus, displayTitle, type BillWithCategories, type Category, type EnforcementStatus } from "../../types";
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -21,15 +21,15 @@ function getBorderColor(status: string): string {
 
 export function publicIndexPage(bills: BillWithCategories[], categories: Category[]): string {
   const totalCount = bills.length;
-  const signedCount = bills.filter(b => b.status_simple === "Signed Into Law").length;
-  const inProgressCount = bills.filter(b =>
-    b.status_simple === "Introduced" ||
-    b.status_simple === "Passed One Chamber" ||
-    b.status_simple === "Passed Both Chambers"
-  ).length;
-  const failedCount = bills.filter(b =>
-    b.status_simple === "Failed" || b.status_simple === "Vetoed"
-  ).length;
+  const signedCount = bills.filter(b => displayStatus(b) === "Signed Into Law").length;
+  const inProgressCount = bills.filter(b => {
+    const s = displayStatus(b);
+    return s === "Introduced" || s === "Passed One Chamber" || s === "Passed Both Chambers";
+  }).length;
+  const failedCount = bills.filter(b => {
+    const s = displayStatus(b);
+    return s === "Failed" || s === "Vetoed";
+  }).length;
 
   const stateOptions = STATES.map(s =>
     `<option value="${escHtml(s)}">${escHtml(STATE_NAMES[s] ?? s)}</option>`
@@ -85,15 +85,17 @@ export function publicIndexPage(bills: BillWithCategories[], categories: Categor
 
   const billCards = bills.map(bill => {
     const stateName = STATE_NAMES[bill.state] ?? bill.state;
+    const effectiveStatus = displayStatus(bill);
+    const effectiveTitle = displayTitle(bill);
     const cardTitle = `${escHtml(stateName)} — ${escHtml(bill.bill_number)}`;
-    const badgeClass = statusClass(bill.status_simple);
-    const borderColor = getBorderColor(bill.status_simple);
+    const badgeClass = statusClass(effectiveStatus);
+    const borderColor = getBorderColor(effectiveStatus);
     const categoryIdList = bill.categories.map(c => c.id).join(",");
     const searchText = [
       bill.state,
       stateName,
       bill.bill_number,
-      bill.title ?? "",
+      effectiveTitle ?? "",
       bill.notes ?? "",
       bill.social_media_definition ?? "",
     ].join(" ").toLowerCase();
@@ -102,12 +104,14 @@ export function publicIndexPage(bills: BillWithCategories[], categories: Categor
       ? `<div class="category-pills">${bill.categories.map(c => `<span class="category-pill">${escHtml(c.name)}</span>`).join("")}</div>`
       : "";
 
-    const definitionBox = bill.social_media_definition
-      ? `<div class="definition-box"><strong>Social Media Definition</strong>${escHtml(bill.social_media_definition)}</div>`
+    const defText = bill.social_media_definition ?? bill.ai_social_media_definition;
+    const definitionBox = defText
+      ? `<div class="definition-box"><strong>Social Media Definition</strong>${escHtml(defText)}</div>`
       : "";
 
-    const notesCallout = bill.notes
-      ? `<div class="notes-callout"><strong>Notes</strong>${escHtml(bill.notes)}</div>`
+    const notesText = bill.notes ?? bill.ai_notes;
+    const notesCallout = notesText
+      ? `<div class="notes-callout"><strong>Notes</strong>${escHtml(notesText)}</div>`
       : "";
 
     const lastActionParts = [];
@@ -115,9 +119,9 @@ export function publicIndexPage(bills: BillWithCategories[], categories: Categor
     if (bill.last_action_date) lastActionParts.push(formatDate(bill.last_action_date));
     const lastActionText = lastActionParts.join(" — ");
 
-    const isActive = bill.status_simple === "Introduced" ||
-      bill.status_simple === "Passed One Chamber" ||
-      bill.status_simple === "Passed Both Chambers";
+    const isActive = effectiveStatus === "Introduced" ||
+      effectiveStatus === "Passed One Chamber" ||
+      effectiveStatus === "Passed Both Chambers";
 
     const sessionEndText = isActive && bill.session_end_date
       ? ` · Session ends ${formatDate(bill.session_end_date)}`
@@ -138,7 +142,7 @@ export function publicIndexPage(bills: BillWithCategories[], categories: Categor
       <div class="bill-card"
         style="border-left-color: ${borderColor}; cursor: pointer; ${urgentStyle}"
         data-state="${escHtml(bill.state)}"
-        data-status="${escHtml(bill.status_simple)}"
+        data-status="${escHtml(effectiveStatus)}"
         data-categories="${categoryIdList}"
         data-search="${escHtml(searchText)}"
         onclick="window.location='/bill/${bill.id}'"
@@ -146,11 +150,11 @@ export function publicIndexPage(bills: BillWithCategories[], categories: Categor
         <div class="bill-card-header">
           <div class="bill-card-title">${urgentPrefix}${cardTitle}</div>
           <div>
-            <span class="status-badge ${badgeClass}">${escHtml(bill.status_simple)}</span>
+            <span class="status-badge ${badgeClass}">${escHtml(effectiveStatus)}</span>
             ${bill.enforcement_status ? `<span class="status-badge enforcement-${bill.enforcement_status.toLowerCase().replace(/\s+/g, "-")}" style="margin-left:0.25rem">${escHtml(bill.enforcement_status)}</span>` : ""}
           </div>
         </div>
-        ${bill.title ? `<div class="bill-card-name">${escHtml(bill.title)}</div>` : ""}
+        ${effectiveTitle ? `<div class="bill-card-name">${escHtml(effectiveTitle)}</div>` : ""}
         ${lastActionText || sessionEndText ? `<div class="bill-card-subtitle">${lastActionText}${sessionEndText}</div>` : ""}
         ${categoryPills}
         ${bill.lawsuit_citation ? `<div class="bill-card-subtitle" style="font-style:italic">${escHtml(bill.lawsuit_citation)}</div>` : ""}

@@ -1,4 +1,4 @@
-import type { Bill, BillWithCategories, Category } from "../types";
+import type { Bill, BillWithCategories, Category, BillCategory } from "../types";
 
 export interface CreateBillInput {
   state: string;
@@ -20,7 +20,12 @@ export interface CreateBillInput {
   enforcement_status?: string;
   lawsuit_citation?: string;
   recap_docket_url?: string;
+  ai_notes?: string;
+  ai_social_media_definition?: string;
+  status_override?: string;
+  title_override?: string;
   category_ids: number[];
+  category_reasons?: Record<number, string>;
 }
 
 export type UpdateBillInput = Partial<CreateBillInput>;
@@ -33,9 +38,10 @@ export async function createBill(db: D1Database, input: CreateBillInput): Promis
         status_simple, status_detail, date_introduced, last_action_date,
         last_action_description, session_end_date, social_media_definition, notes,
         change_hash, legiscan_session_id, urgent, enforcement_status,
-        lawsuit_citation, recap_docket_url,
+        lawsuit_citation, recap_docket_url, ai_notes, ai_social_media_definition,
+        status_override, title_override,
         created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       input.state, input.bill_number, input.title ?? null,
@@ -47,6 +53,8 @@ export async function createBill(db: D1Database, input: CreateBillInput): Promis
       input.change_hash ?? null, input.legiscan_session_id ?? null,
       input.urgent ?? 0, input.enforcement_status ?? null,
       input.lawsuit_citation ?? null, input.recap_docket_url ?? null,
+      input.ai_notes ?? null, input.ai_social_media_definition ?? null,
+      input.status_override ?? null, input.title_override ?? null,
       now, now
     )
     .run();
@@ -54,8 +62,10 @@ export async function createBill(db: D1Database, input: CreateBillInput): Promis
   const billId = result.meta.last_row_id;
 
   if (input.category_ids.length > 0) {
-    const stmt = db.prepare("INSERT INTO bill_categories (bill_id, category_id) VALUES (?, ?)");
-    await db.batch(input.category_ids.map((catId) => stmt.bind(billId, catId)));
+    const stmt = db.prepare("INSERT INTO bill_categories (bill_id, category_id, reason) VALUES (?, ?, ?)");
+    await db.batch(input.category_ids.map((catId) =>
+      stmt.bind(billId, catId, input.category_reasons?.[catId] ?? null)
+    ));
   }
 
   const bill = await db.prepare("SELECT * FROM bills WHERE id = ?").bind(billId).first<Bill>();
@@ -68,31 +78,31 @@ export async function getBillById(db: D1Database, id: number): Promise<BillWithC
 
   const categories = await db
     .prepare(
-      `SELECT c.* FROM categories c
+      `SELECT c.*, bc.reason FROM categories c
        JOIN bill_categories bc ON bc.category_id = c.id
        WHERE bc.bill_id = ?
-       ORDER BY c.sort_order`
+       ORDER BY c.name`
     )
     .bind(id)
-    .all<Category>();
+    .all<BillCategory>();
 
   return { ...bill, categories: categories.results };
 }
 
 export async function getAllBillsWithCategories(db: D1Database): Promise<BillWithCategories[]> {
   const bills = await db
-    .prepare("SELECT * FROM bills ORDER BY last_action_date DESC, updated_at DESC")
+    .prepare("SELECT * FROM bills ORDER BY state, bill_number")
     .all<Bill>();
 
   const allBillCats = await db
     .prepare(
-      `SELECT bc.bill_id, c.* FROM categories c
+      `SELECT bc.bill_id, bc.reason, c.* FROM categories c
        JOIN bill_categories bc ON bc.category_id = c.id
-       ORDER BY c.sort_order`
+       ORDER BY c.name`
     )
-    .all<Category & { bill_id: number }>();
+    .all<BillCategory & { bill_id: number }>();
 
-  const catsByBill = new Map<number, Category[]>();
+  const catsByBill = new Map<number, BillCategory[]>();
   for (const row of allBillCats.results) {
     const { bill_id, ...cat } = row;
     if (!catsByBill.has(bill_id)) catsByBill.set(bill_id, []);
@@ -114,7 +124,8 @@ export async function updateBill(db: D1Database, id: number, input: UpdateBillIn
     "status_simple", "status_detail", "date_introduced", "last_action_date",
     "last_action_description", "session_end_date", "social_media_definition", "notes",
     "change_hash", "legiscan_session_id", "urgent", "enforcement_status",
-    "lawsuit_citation", "recap_docket_url",
+    "lawsuit_citation", "recap_docket_url", "ai_notes", "ai_social_media_definition",
+    "status_override", "title_override",
   ];
 
   for (const key of settable) {
@@ -133,8 +144,10 @@ export async function updateBill(db: D1Database, id: number, input: UpdateBillIn
   if (input.category_ids !== undefined) {
     await db.prepare("DELETE FROM bill_categories WHERE bill_id = ?").bind(id).run();
     if (input.category_ids.length > 0) {
-      const stmt = db.prepare("INSERT INTO bill_categories (bill_id, category_id) VALUES (?, ?)");
-      await db.batch(input.category_ids.map((catId) => stmt.bind(id, catId)));
+      const stmt = db.prepare("INSERT INTO bill_categories (bill_id, category_id, reason) VALUES (?, ?, ?)");
+      await db.batch(input.category_ids.map((catId) =>
+        stmt.bind(id, catId, input.category_reasons?.[catId] ?? null)
+      ));
     }
   }
 }

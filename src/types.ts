@@ -27,18 +27,26 @@ export interface Bill {
   enforcement_status: string | null;
   lawsuit_citation: string | null;
   recap_docket_url: string | null;
+  ai_notes: string | null;
+  ai_social_media_definition: string | null;
+  status_override: string | null;
+  title_override: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface BillWithCategories extends Bill {
-  categories: Category[];
+  categories: BillCategory[];
 }
 
 export interface Category {
   id: number;
   name: string;
   sort_order: number;
+}
+
+export interface BillCategory extends Category {
+  reason: string | null;
 }
 
 export interface User {
@@ -58,7 +66,17 @@ export type StatusSimple =
   | "Vetoed"
   | "Failed";
 
+// Display helpers: overrides take priority over LegiScan values
+export function displayStatus(bill: Bill): string {
+  return bill.status_override ?? bill.status_simple;
+}
+
+export function displayTitle(bill: Bill): string | null {
+  return bill.title_override ?? bill.title;
+}
+
 export type EnforcementStatus =
   | "In Effect"
   | "Enjoined"
+  | "Partially Enjoined"
   | "Ruled Unconstitutional";

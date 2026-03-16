@@ -156,7 +156,7 @@ export async function getBillDetails(
 export async function getBillText(
   apiKey: string,
   docId: number
-): Promise<{ doc_id: number; mime: string; text: string } | null> {
+): Promise<{ doc_id: number; mime: string; base64: string } | null> {
   const url = `${LEGISCAN_BASE}?key=${apiKey}&op=getBillText&id=${docId}`;
   const res = await fetch(url);
   const data = await res.json() as Record<string, unknown>;
@@ -170,12 +170,9 @@ export async function getBillText(
     doc: string; // Base64 encoded
   };
 
-  // Decode Base64 document
-  const decoded = atob(text.doc);
-
   return {
     doc_id: text.doc_id,
     mime: text.mime,
-    text: decoded,
+    base64: text.doc,
   };
 }
