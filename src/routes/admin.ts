@@ -28,6 +28,8 @@ import { adminUserFormPage } from "../templates/admin/user-form";
 import { adminPasswordFormPage } from "../templates/admin/password-form";
 import { adminCategoryListPage } from "../templates/admin/category-list";
 import { syncBillFromLegiscan, getSyncLogForBill, logSync } from "../services/sync";
+import { fetchBillText } from "../services/bill-text";
+import { analyzeBillText } from "../services/analyze";
 
 const admin = new Hono<{ Bindings: Bindings }>();
 
@@ -142,6 +144,54 @@ admin.post("/admin/bills/:id/sync", async (c) => {
   const force = body.force === "1";
   const result = await syncBillFromLegiscan(c.env.DB, apiKey, bill, "admin", { force });
   return c.redirect(`/admin/bills/${id}/edit?sync=${result.outcome}`);
+});
+
+admin.post("/admin/bills/:id/analyze", async (c) => {
+  const id = Number(c.req.param("id"));
+  const bill = await getBillById(c.env.DB, id);
+  if (!bill) return c.notFound();
+
+  const [categories, syncLog] = await Promise.all([
+    getAllCategories(c.env.DB),
+    getSyncLogForBill(c.env.DB, id),
+  ]);
+  const session = c.get("session");
+
+  if (!bill.legiscan_bill_id) {
+    return c.html(adminBillFormPage({ bill, categories, role: session.role, syncLog, error: "Bill must be linked to LegiScan before analyzing." }));
+  }
+
+  if (!c.env.LEGISCAN_API_KEY || !c.env.ANTHROPIC_API_KEY) {
+    return c.html(adminBillFormPage({ bill, categories, role: session.role, syncLog, error: "LegiScan and Anthropic API keys must be configured." }));
+  }
+
+  try {
+    const textResult = await fetchBillText(c.env.BILL_TEXTS, c.env.LEGISCAN_API_KEY, bill.legiscan_bill_id);
+    if (!textResult) {
+      return c.html(adminBillFormPage({ bill, categories, role: session.role, syncLog, error: "Could not fetch bill text from LegiScan. No text versions available." }));
+    }
+
+    const analysis = await analyzeBillText(
+      c.env.ANTHROPIC_API_KEY,
+      textResult.text,
+      categories,
+      bill.title ?? bill.bill_number,
+      bill.state
+    );
+
+    const sourceNote = textResult.source === "r2" ? "cached" : "fetched from LegiScan";
+    return c.html(adminBillFormPage({
+      bill,
+      categories,
+      role: session.role,
+      syncLog,
+      analysis,
+      analysisMessage: `Bill text analyzed (${textResult.type} version, ${sourceNote}).`,
+    }));
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return c.html(adminBillFormPage({ bill, categories, role: session.role, syncLog, error: `Analysis failed: ${msg}` }));
+  }
 });
 
 admin.post("/admin/bills/:id", async (c) => {

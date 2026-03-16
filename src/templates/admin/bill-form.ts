@@ -2,6 +2,7 @@ import { layout, escHtml } from "../layout";
 import { STATES, STATUSES, STATE_NAMES, ENFORCEMENT_STATUSES } from "../../constants";
 import type { BillWithCategories, Category } from "../../types";
 import type { SyncLogEntry } from "../../services/sync";
+import type { AnalysisResult } from "../../services/analyze";
 
 export function adminBillFormPage(options: {
   bill?: BillWithCategories;
@@ -10,13 +11,17 @@ export function adminBillFormPage(options: {
   role?: string;
   syncLog?: SyncLogEntry[];
   syncMessage?: string;
+  analysis?: AnalysisResult;
+  analysisMessage?: string;
 }): string {
-  const { bill, categories, error, role, syncLog, syncMessage } = options;
+  const { bill, categories, error, role, syncLog, syncMessage, analysis, analysisMessage } = options;
   const isEdit = !!bill;
   const hasLegiscan = !!(bill?.legiscan_bill_id);
   const pageTitle = "Admin - " + (isEdit ? "Edit" : "Add") + " Bill";
   const formAction = isEdit ? `/admin/bills/${bill.id}` : "/admin/bills";
-  const billCategoryIds = new Set((bill?.categories ?? []).map(c => c.id));
+  const billCategoryIds = new Set(
+    analysis ? analysis.category_ids : (bill?.categories ?? []).map(c => c.id)
+  );
 
   const stateOptions = STATES.map(s => {
     const selected = bill?.state === s ? " selected" : "";
@@ -28,8 +33,9 @@ export function adminBillFormPage(options: {
     return `<option value="${escHtml(s)}"${selected}>${escHtml(s)}</option>`;
   }).join("");
 
+  const activeEnforcement = analysis?.enforcement_status ?? bill?.enforcement_status;
   const enforcementOptions = ENFORCEMENT_STATUSES.map(s => {
-    const selected = bill?.enforcement_status === s ? " selected" : "";
+    const selected = activeEnforcement === s ? " selected" : "";
     return `<option value="${escHtml(s)}"${selected}>${escHtml(s)}</option>`;
   }).join("");
 
@@ -116,6 +122,7 @@ export function adminBillFormPage(options: {
     </div>
 
     ${error ? `<div class="error-message">${escHtml(error)}</div>` : ""}
+    ${analysisMessage ? `<div class="info-box">${escHtml(analysisMessage)} Review the pre-filled fields below and save when ready.</div>` : ""}
 
     ${quickAddBox}
 
@@ -185,7 +192,7 @@ export function adminBillFormPage(options: {
         <h2>Social Media Definition</h2>
         <div class="form-group">
           <label for="f-definition">Definition used in this bill</label>
-          <textarea id="f-definition" name="social_media_definition" rows="4">${escHtml(bill?.social_media_definition ?? "")}</textarea>
+          <textarea id="f-definition" name="social_media_definition" rows="4">${escHtml(analysis?.social_media_definition ?? bill?.social_media_definition ?? "")}</textarea>
           <span class="form-hint">The specific definition of "social media platform" as written in the bill text.</span>
         </div>
       </div>
@@ -194,7 +201,7 @@ export function adminBillFormPage(options: {
         <h2>Notes</h2>
         <div class="form-group">
           <label for="f-notes">Editorial notes / analysis</label>
-          <textarea id="f-notes" name="notes" rows="5">${escHtml(bill?.notes ?? "")}</textarea>
+          <textarea id="f-notes" name="notes" rows="5">${escHtml(analysis?.notes ?? bill?.notes ?? "")}</textarea>
         </div>
       </div>
 
@@ -369,6 +376,9 @@ function buildSyncSection(bill: BillWithCategories, syncLog: SyncLogEntry[], syn
         <form method="POST" action="/admin/bills/${bill.id}/sync" style="display:inline">
           <input type="hidden" name="force" value="1">
           <button type="submit" class="btn btn-secondary btn-sm">Force Refresh (ignore hash)</button>
+        </form>
+        <form method="POST" action="/admin/bills/${bill.id}/analyze" style="display:inline">
+          <button type="submit" class="btn btn-primary btn-sm" style="background:#7c3aed">Analyze Bill Text</button>
         </form>
         <span style="font-size:0.8rem;color:var(--muted2,#94a3b8)">
           Hash: ${escHtml(bill.change_hash ?? "none")} · LegiScan ID: ${bill.legiscan_bill_id}
