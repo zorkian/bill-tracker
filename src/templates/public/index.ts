@@ -1,6 +1,6 @@
 import { layout, escHtml, statusClass } from "../layout";
-import { STATES, STATUSES, STATE_NAMES, STATUS_COLORS } from "../../constants";
-import type { BillWithCategories, Category } from "../../types";
+import { STATES, STATUSES, STATE_NAMES, STATUS_COLORS, ENFORCEMENT_COLORS, ENFORCEMENT_STATUSES } from "../../constants";
+import type { BillWithCategories, Category, EnforcementStatus } from "../../types";
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -21,20 +21,14 @@ function getBorderColor(status: string): string {
 
 export function publicIndexPage(bills: BillWithCategories[], categories: Category[]): string {
   const totalCount = bills.length;
-  const signedCount = bills.filter(b =>
-    b.status_simple === "Signed Into Law" ||
-    b.status_simple === "Lawsuit Filed, Temporarily Enjoined" ||
-    b.status_simple === "Lawsuit Filed, Law in Effect"
-  ).length;
+  const signedCount = bills.filter(b => b.status_simple === "Signed Into Law").length;
   const inProgressCount = bills.filter(b =>
     b.status_simple === "Introduced" ||
     b.status_simple === "Passed One Chamber" ||
     b.status_simple === "Passed Both Chambers"
   ).length;
   const failedCount = bills.filter(b =>
-    b.status_simple === "Failed" ||
-    b.status_simple === "Vetoed" ||
-    b.status_simple === "Law Ruled Unconstitutional"
+    b.status_simple === "Failed" || b.status_simple === "Vetoed"
   ).length;
 
   const stateOptions = STATES.map(s =>
@@ -134,7 +128,7 @@ export function publicIndexPage(bills: BillWithCategories[], categories: Categor
       : "";
 
     const urgentStyle = bill.urgent
-      ? "background: #fef2f2; border-top-color: #dc2626; border-right-color: #dc2626; border-bottom-color: #dc2626;"
+      ? "background: var(--urgent-bg); border-top-color: var(--urgent-border); border-right-color: var(--urgent-border); border-bottom-color: var(--urgent-border);"
       : "";
     const urgentPrefix = bill.urgent
       ? `<span class="action-alert-badge">Action Alert</span> `
@@ -151,7 +145,10 @@ export function publicIndexPage(bills: BillWithCategories[], categories: Categor
         ${bill.urgent ? 'aria-label="Action Alert: ' + escHtml(cardTitle) + '"' : ""}>
         <div class="bill-card-header">
           <div class="bill-card-title">${urgentPrefix}${cardTitle}</div>
-          <span class="status-badge ${badgeClass}">${escHtml(bill.status_simple)}</span>
+          <div>
+            <span class="status-badge ${badgeClass}">${escHtml(bill.status_simple)}</span>
+            ${bill.enforcement_status ? `<span class="status-badge enforcement-${bill.enforcement_status.toLowerCase().replace(/\s+/g, "-")}" style="margin-left:0.25rem">${escHtml(bill.enforcement_status)}</span>` : ""}
+          </div>
         </div>
         ${bill.title ? `<div class="bill-card-name">${escHtml(bill.title)}</div>` : ""}
         ${lastActionText || sessionEndText ? `<div class="bill-card-subtitle">${lastActionText}${sessionEndText}</div>` : ""}

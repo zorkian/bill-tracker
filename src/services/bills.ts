@@ -17,6 +17,7 @@ export interface CreateBillInput {
   change_hash?: string;
   legiscan_session_id?: number;
   urgent?: number;
+  enforcement_status?: string;
   lawsuit_citation?: string;
   recap_docket_url?: string;
   category_ids: number[];
@@ -31,10 +32,10 @@ export async function createBill(db: D1Database, input: CreateBillInput): Promis
       `INSERT INTO bills (state, bill_number, title, legiscan_bill_id, legiscan_url,
         status_simple, status_detail, date_introduced, last_action_date,
         last_action_description, session_end_date, social_media_definition, notes,
-        change_hash, legiscan_session_id, urgent,
+        change_hash, legiscan_session_id, urgent, enforcement_status,
         lawsuit_citation, recap_docket_url,
         created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       input.state, input.bill_number, input.title ?? null,
@@ -44,7 +45,7 @@ export async function createBill(db: D1Database, input: CreateBillInput): Promis
       input.last_action_description ?? null, input.session_end_date ?? null,
       input.social_media_definition ?? null, input.notes ?? null,
       input.change_hash ?? null, input.legiscan_session_id ?? null,
-      input.urgent ?? 0,
+      input.urgent ?? 0, input.enforcement_status ?? null,
       input.lawsuit_citation ?? null, input.recap_docket_url ?? null,
       now, now
     )
@@ -112,7 +113,7 @@ export async function updateBill(db: D1Database, id: number, input: UpdateBillIn
     "state", "bill_number", "title", "legiscan_bill_id", "legiscan_url",
     "status_simple", "status_detail", "date_introduced", "last_action_date",
     "last_action_description", "session_end_date", "social_media_definition", "notes",
-    "change_hash", "legiscan_session_id", "urgent",
+    "change_hash", "legiscan_session_id", "urgent", "enforcement_status",
     "lawsuit_citation", "recap_docket_url",
   ];
 

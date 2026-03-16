@@ -1,5 +1,12 @@
 const LEGISCAN_BASE = "https://api.legiscan.com/";
 
+export interface LegiscanTextRef {
+  doc_id: number;
+  type: string;
+  type_id: number;
+  mime: string;
+}
+
 export interface LegiscanBillResult {
   legiscan_bill_id: number;
   state: string;
@@ -14,6 +21,7 @@ export interface LegiscanBillResult {
   session_end_date: string | null;
   change_hash: string | null;
   session_id: number | null;
+  texts: LegiscanTextRef[];
 }
 
 export interface MasterListEntry {
@@ -25,7 +33,7 @@ const STATUS_MAP: Record<number, string> = {
   1: "Introduced",
   2: "Passed One Chamber",
   3: "Passed Both Chambers",
-  4: "Passed Both Chambers",
+  4: "Signed Into Law",
   5: "Vetoed",
   6: "Failed",
 };
@@ -58,14 +66,24 @@ export async function getMasterListRaw(
   return entries;
 }
 
+// Parse state, bill number, and optional year from a LegiScan URL like:
+// https://legiscan.com/AZ/bill/HB2991/2026
+export function parseLegiscanUrl(url: string): { state: string; billNumber: string; year?: string } | null {
+  const match = url.match(/legiscan\.com\/([A-Z]{2})\/bill\/([^/]+)(?:\/(\d{4}))?/i);
+  if (!match) return null;
+  return { state: match[1].toUpperCase(), billNumber: match[2], year: match[3] };
+}
+
 export async function searchBill(
   apiKey: string,
   state: string,
-  billNumber: string
+  billNumber: string,
+  year?: string
 ): Promise<LegiscanBillResult | null> {
   const normalizedBill = billNumber.replace(/\s+/g, "");
 
-  const searchUrl = `${LEGISCAN_BASE}?key=${apiKey}&op=search&state=${state}&bill=${normalizedBill}`;
+  let searchUrl = `${LEGISCAN_BASE}?key=${apiKey}&op=search&state=${state}&bill=${normalizedBill}`;
+  if (year) searchUrl += `&year=${year}`;
   const searchRes = await fetch(searchUrl);
   const searchData = await searchRes.json() as Record<string, unknown>;
 
@@ -100,12 +118,12 @@ export async function getBillDetails(
     status_desc: string;
     change_hash?: string;
     url?: string;
-    history?: Array<{ date: string; action: string; importance: number; type_id?: number }>;
+    history?: Array<{ date: string; action: string; importance: number }>;
     session?: { session_id?: number; session_title?: string; sine_die?: string; end_date?: string };
+    texts?: Array<{ doc_id: number; type: string; type_id: number; mime: string }>;
   };
 
-  const signed = bill.history?.some((h) => h.type_id === 28);
-  const statusSimple = signed ? "Signed Into Law" : (mapLegiscanStatus(bill.status) ?? "Introduced");
+  const statusSimple = mapLegiscanStatus(bill.status) ?? "Introduced";
 
   const lastAction = bill.history?.length ? bill.history[bill.history.length - 1] : null;
   const introDate = bill.history?.length ? bill.history[0].date : null;
@@ -126,5 +144,38 @@ export async function getBillDetails(
     session_end_date: sessionEndDate,
     change_hash: bill.change_hash ?? null,
     session_id: bill.session?.session_id ?? null,
+    texts: (bill.texts ?? []).map((t) => ({
+      doc_id: t.doc_id,
+      type: t.type,
+      type_id: t.type_id,
+      mime: t.mime,
+    })),
+  };
+}
+
+export async function getBillText(
+  apiKey: string,
+  docId: number
+): Promise<{ doc_id: number; mime: string; text: string } | null> {
+  const url = `${LEGISCAN_BASE}?key=${apiKey}&op=getBillText&id=${docId}`;
+  const res = await fetch(url);
+  const data = await res.json() as Record<string, unknown>;
+
+  if (data.status !== "OK") return null;
+
+  const text = data.text as {
+    doc_id: number;
+    mime: string;
+    text_size: number;
+    doc: string; // Base64 encoded
+  };
+
+  // Decode Base64 document
+  const decoded = atob(text.doc);
+
+  return {
+    doc_id: text.doc_id,
+    mime: text.mime,
+    text: decoded,
   };
 }

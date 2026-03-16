@@ -127,7 +127,7 @@
   // Defs for hover effect
   var style = document.createElementNS(svgNS, "style");
   style.textContent = [
-    ".us-map-state { cursor: pointer; transition: fill 0.15s, stroke 0.15s; stroke: #cbd5e1; stroke-width: 1; fill: #f1f5f9; }",
+    ".us-map-state { cursor: pointer; transition: fill 0.15s, stroke 0.15s; stroke: var(--card-border, #cbd5e1); stroke-width: 1; fill: var(--bg, #f1f5f9); }",
     ".us-map-state.status-introduced { fill: #bfdbfe; stroke: #3b82f6; stroke-width: 1.2; }",
     ".us-map-state.status-passed-one { fill: #93c5fd; stroke: #2563eb; stroke-width: 1.2; }",
     ".us-map-state.status-passed-both { fill: #60a5fa; stroke: #1d4ed8; stroke-width: 1.2; }",
@@ -138,10 +138,10 @@
     ".us-map-state:hover { filter: brightness(0.9); }",
     ".us-map-state.selected:hover { fill: #1d4ed8; }",
     ".us-map-callout-label { font-size: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; }",
-    ".us-map-callout-label .callout-bg { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 0.5; rx: 3; }",
+    ".us-map-callout-label .callout-bg { fill: var(--card-bg, #f8fafc); stroke: var(--card-border, #cbd5e1); stroke-width: 0.5; rx: 3; }",
     ".us-map-callout-label .callout-bg.has-bills { fill: #dbeafe; stroke: #2563eb; }",
     ".us-map-callout-label .callout-bg.selected { fill: #2563eb; stroke: #1d4ed8; }",
-    ".us-map-callout-label text { fill: #475569; font-weight: 600; }",
+    ".us-map-callout-label text { fill: var(--muted3, #475569); font-weight: 600; }",
     ".us-map-callout-label text.has-bills { fill: #1e40af; }",
     ".us-map-callout-label text.selected { fill: #ffffff; }",
     ".us-map-callout-label:hover .callout-bg { stroke-width: 1.2; }",

@@ -25,8 +25,8 @@
       if (show) {
         visible++;
         var s = card.dataset.status;
-        if (s === "Signed Into Law" || s === "Lawsuit Filed, Temporarily Enjoined" || s === "Lawsuit Filed, Law in Effect") signed++;
-        else if (s === "Vetoed" || s === "Failed" || s === "Law Ruled Unconstitutional") failed++;
+        if (s === "Signed Into Law") signed++;
+        else if (s === "Vetoed" || s === "Failed") failed++;
         else active++;
       }
     });

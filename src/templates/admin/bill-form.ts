@@ -1,15 +1,19 @@
 import { layout, escHtml } from "../layout";
-import { STATES, STATUSES, STATE_NAMES } from "../../constants";
+import { STATES, STATUSES, STATE_NAMES, ENFORCEMENT_STATUSES } from "../../constants";
 import type { BillWithCategories, Category } from "../../types";
+import type { SyncLogEntry } from "../../services/sync";
 
 export function adminBillFormPage(options: {
   bill?: BillWithCategories;
   categories: Category[];
   error?: string;
   role?: string;
+  syncLog?: SyncLogEntry[];
+  syncMessage?: string;
 }): string {
-  const { bill, categories, error, role } = options;
+  const { bill, categories, error, role, syncLog, syncMessage } = options;
   const isEdit = !!bill;
+  const hasLegiscan = !!(bill?.legiscan_bill_id);
   const pageTitle = "Admin - " + (isEdit ? "Edit" : "Add") + " Bill";
   const formAction = isEdit ? `/admin/bills/${bill.id}` : "/admin/bills";
   const billCategoryIds = new Set((bill?.categories ?? []).map(c => c.id));
@@ -21,6 +25,11 @@ export function adminBillFormPage(options: {
 
   const statusOptions = STATUSES.map(s => {
     const selected = bill?.status_simple === s ? " selected" : "";
+    return `<option value="${escHtml(s)}"${selected}>${escHtml(s)}</option>`;
+  }).join("");
+
+  const enforcementOptions = ENFORCEMENT_STATUSES.map(s => {
+    const selected = bill?.enforcement_status === s ? " selected" : "";
     return `<option value="${escHtml(s)}"${selected}>${escHtml(s)}</option>`;
   }).join("");
 
@@ -76,7 +85,6 @@ export function adminBillFormPage(options: {
           return;
         }
         const data = await res.json();
-        // Populate form fields
         if (data.title) document.getElementById('f-title').value = data.title;
         if (data.bill_number) document.getElementById('f-bill-number').value = data.bill_number;
         if (data.state) document.getElementById('f-state').value = data.state;
@@ -98,6 +106,10 @@ export function adminBillFormPage(options: {
     </script>
   ` : "";
 
+  // For linked bills in edit mode, LegiScan fields are read-only
+  // For new bills or unlinked bills, everything is editable
+  const legiscanSection = hasLegiscan ? buildLinkedLegiscanSection(bill) : buildUnlinkedLegiscanSection(bill, stateOptions, statusOptions);
+
   const content = `
     <div class="page-header">
       <h1>${isEdit ? "Edit Bill" : "Add Bill"}</h1>
@@ -108,60 +120,43 @@ export function adminBillFormPage(options: {
     ${quickAddBox}
 
     <form method="POST" action="${formAction}">
-      <!-- Hidden fields -->
+      <!-- Hidden fields for LegiScan-managed data (preserved on save) -->
       <input type="hidden" id="f-legiscan-bill-id" name="legiscan_bill_id" value="${escHtml(String(bill?.legiscan_bill_id ?? ""))}">
       <input type="hidden" id="f-status-detail" name="status_detail" value="${escHtml(bill?.status_detail ?? "")}">
       <input type="hidden" id="f-last-action-date" name="last_action_date" value="${escHtml(bill?.last_action_date ?? "")}">
       <input type="hidden" id="f-last-action-description" name="last_action_description" value="${escHtml(bill?.last_action_description ?? "")}">
+      ${hasLegiscan ? `
+        <input type="hidden" name="state" value="${escHtml(bill.state)}">
+        <input type="hidden" name="bill_number" value="${escHtml(bill.bill_number)}">
+        <input type="hidden" name="title" value="${escHtml(bill.title ?? "")}">
+        <input type="hidden" name="status_simple" value="${escHtml(bill.status_simple)}">
+        <input type="hidden" name="date_introduced" value="${escHtml(bill.date_introduced ?? "")}">
+        <input type="hidden" name="session_end_date" value="${escHtml(bill.session_end_date ?? "")}">
+      ` : ""}
+
+      ${legiscanSection}
 
       <div class="form-section">
-        <h2>Bill Details</h2>
+        <h2>Our Analysis</h2>
         <div class="form-grid">
           <div class="form-group">
-            <label for="f-state">State</label>
-            <select id="f-state" name="state" required>
-              <option value="">Select state…</option>
-              ${stateOptions}
+            <label for="f-enforcement">Enforcement Status</label>
+            <select id="f-enforcement" name="enforcement_status">
+              <option value="">— Not applicable —</option>
+              ${enforcementOptions}
             </select>
+            <span class="form-hint">Post-signing: is the law in force?</span>
           </div>
           <div class="form-group">
-            <label for="f-bill-number">Bill Number</label>
-            <input type="text" id="f-bill-number" name="bill_number" value="${escHtml(bill?.bill_number ?? "")}" placeholder="e.g. HB 2991" required>
-          </div>
-          <div class="form-group full-width">
-            <label for="f-title">Title</label>
-            <input type="text" id="f-title" name="title" value="${escHtml(bill?.title ?? "")}">
-          </div>
-          <div class="form-group">
-            <label for="f-status">Status</label>
-            <select id="f-status" name="status_simple" required>
-              ${statusOptions}
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="f-legiscan-url">Legiscan URL</label>
-            <input type="url" id="f-legiscan-url" name="legiscan_url" value="${escHtml(bill?.legiscan_url ?? "")}">
-          </div>
-          <div class="form-group">
-            <label for="f-date-introduced">Date Introduced</label>
-            <input type="date" id="f-date-introduced" name="date_introduced" value="${escHtml(bill?.date_introduced ?? "")}">
-          </div>
-          <div class="form-group">
-            <label for="f-session-end-date">Session End Date</label>
-            <input type="date" id="f-session-end-date" name="session_end_date" value="${escHtml(bill?.session_end_date ?? "")}">
+            <label for="f-legiscan-url">LegiScan URL</label>
+            <input type="url" id="f-legiscan-url" name="legiscan_url" value="${escHtml(bill?.legiscan_url ?? "")}" placeholder="https://legiscan.com/STATE/bill/...">
+            <span class="form-hint">${hasLegiscan ? "Change to re-link to a different bill" : "Paste to link this bill to LegiScan on save"}</span>
           </div>
         </div>
         <label class="checkbox-item" style="font-size:0.875rem;font-weight:600;color:#92400e;margin-top:1rem;">
           <input type="checkbox" name="urgent" value="1"${bill?.urgent ? " checked" : ""}>
           Action Alert — mark this bill as needing urgent attention
         </label>
-      </div>
-
-      <div class="form-section">
-        <h2>Categories</h2>
-        <div class="checkbox-grid">
-          ${categoryCheckboxes}
-        </div>
       </div>
 
       <div class="form-section">
@@ -176,7 +171,14 @@ export function adminBillFormPage(options: {
             <input type="url" id="f-recap-docket-url" name="recap_docket_url" value="${escHtml(bill?.recap_docket_url ?? "")}" placeholder="https://www.courtlistener.com/docket/...">
           </div>
         </div>
-        <span class="form-hint">For bills with lawsuit statuses. Appeals may have separate RECAP dockets.</span>
+        <span class="form-hint">Appeals may have separate RECAP dockets.</span>
+      </div>
+
+      <div class="form-section">
+        <h2>Categories</h2>
+        <div class="checkbox-grid">
+          ${categoryCheckboxes}
+        </div>
       </div>
 
       <div class="form-section">
@@ -201,7 +203,191 @@ export function adminBillFormPage(options: {
         <a href="/admin" class="btn btn-secondary">Cancel</a>
       </div>
     </form>
+    ${isEdit && hasLegiscan ? buildSyncSection(bill, syncLog ?? [], syncMessage) : ""}
   `;
 
   return layout(pageTitle, content, { isAdmin: true, role });
+}
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso.includes("T") ? iso : iso + "T00:00:00Z");
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+function buildLinkedLegiscanSection(bill: BillWithCategories): string {
+  const stateName = STATE_NAMES[bill.state] ?? bill.state;
+  return `
+    <div class="form-section" style="background: var(--def-bg); border-color: var(--def-border);">
+      <h2>LegiScan Data <span style="font-weight:400;text-transform:none;font-size:0.75rem;color:var(--muted2)">· Updated via sync — read only</span></h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>State</label>
+          <div style="font-size:0.875rem;padding:0.45rem 0">${escHtml(stateName)}</div>
+        </div>
+        <div class="form-group">
+          <label>Bill Number</label>
+          <div style="font-size:0.875rem;padding:0.45rem 0">${escHtml(bill.bill_number)}</div>
+        </div>
+        <div class="form-group full-width">
+          <label>Title</label>
+          <div style="font-size:0.875rem;padding:0.45rem 0">${escHtml(bill.title ?? "—")}</div>
+        </div>
+        <div class="form-group">
+          <label>Legislative Status</label>
+          <div style="font-size:0.875rem;padding:0.45rem 0">${escHtml(bill.status_simple)}</div>
+        </div>
+        <div class="form-group">
+          <label>Status Detail</label>
+          <div style="font-size:0.875rem;padding:0.45rem 0">${escHtml(bill.status_detail ?? "—")}</div>
+        </div>
+        <div class="form-group">
+          <label>Date Introduced</label>
+          <div style="font-size:0.875rem;padding:0.45rem 0">${formatDate(bill.date_introduced)}</div>
+        </div>
+        <div class="form-group">
+          <label>Session End Date</label>
+          <div style="font-size:0.875rem;padding:0.45rem 0">${formatDate(bill.session_end_date)}</div>
+        </div>
+        <div class="form-group">
+          <label>Last Action</label>
+          <div style="font-size:0.875rem;padding:0.45rem 0">${escHtml(bill.last_action_description ?? "—")}</div>
+        </div>
+        <div class="form-group">
+          <label>Last Action Date</label>
+          <div style="font-size:0.875rem;padding:0.45rem 0">${formatDate(bill.last_action_date)}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function buildUnlinkedLegiscanSection(bill: BillWithCategories | undefined, stateOptions: string, statusOptions: string): string {
+  return `
+    <div class="form-section">
+      <h2>Bill Details <span style="font-weight:400;text-transform:none;font-size:0.75rem;color:var(--muted2)">· Paste a LegiScan URL below to auto-populate</span></h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="f-state">State</label>
+          <select id="f-state" name="state" required>
+            <option value="">Select state…</option>
+            ${stateOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="f-bill-number">Bill Number</label>
+          <input type="text" id="f-bill-number" name="bill_number" value="${escHtml(bill?.bill_number ?? "")}" placeholder="e.g. HB 2991" required>
+        </div>
+        <div class="form-group full-width">
+          <label for="f-title">Title</label>
+          <input type="text" id="f-title" name="title" value="${escHtml(bill?.title ?? "")}">
+        </div>
+        <div class="form-group">
+          <label for="f-status">Legislative Status</label>
+          <select id="f-status" name="status_simple" required>
+            ${statusOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="f-date-introduced">Date Introduced</label>
+          <input type="date" id="f-date-introduced" name="date_introduced" value="${escHtml(bill?.date_introduced ?? "")}">
+        </div>
+        <div class="form-group">
+          <label for="f-session-end-date">Session End Date</label>
+          <input type="date" id="f-session-end-date" name="session_end_date" value="${escHtml(bill?.session_end_date ?? "")}">
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function formatSyncDate(iso: string): string {
+  const d = new Date(iso.includes("T") ? iso : iso + "T00:00:00Z");
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+}
+
+function buildSyncSection(bill: BillWithCategories, syncLog: SyncLogEntry[], syncMessage?: string): string {
+  const syncMessages: Record<string, { cls: string; text: string }> = {
+    updated: { cls: "info-box", text: "Bill updated from LegiScan." },
+    hash_unchanged: { cls: "info-box", text: "No changes — LegiScan hash matches. Use Force Refresh to pull anyway." },
+    no_legiscan_id: { cls: "error-message", text: "No LegiScan bill ID set." },
+    no_data: { cls: "error-message", text: "LegiScan returned no data for this bill." },
+    error: { cls: "error-message", text: "Sync failed — check the log below for details." },
+    no_api_key: { cls: "error-message", text: "LegiScan API key not configured." },
+  };
+
+  const msg = syncMessage && syncMessages[syncMessage]
+    ? `<div class="${syncMessages[syncMessage].cls}">${syncMessages[syncMessage].text}</div>`
+    : "";
+
+  const logRows = syncLog.map(entry => {
+    const outcomeColors: Record<string, string> = {
+      updated: "color:var(--quick-add-fg,#15803d)",
+      hash_unchanged: "color:var(--muted2,#94a3b8)",
+      error: "color:var(--error-fg,#dc2626)",
+      no_data: "color:var(--error-fg,#dc2626)",
+      no_legiscan_id: "color:var(--muted2,#94a3b8)",
+    };
+    const style = outcomeColors[entry.outcome] ?? "";
+
+    let detail = "";
+    if (entry.changes) {
+      try {
+        const changes = JSON.parse(entry.changes) as Record<string, { old: string | null; new: string | null }>;
+        detail = Object.entries(changes).map(([field, { old: o, new: n }]) =>
+          `<span style="color:var(--muted2,#94a3b8)">${escHtml(field)}:</span> ${escHtml(o ?? "(empty)")} → ${escHtml(n ?? "(empty)")}`
+        ).join("<br>");
+      } catch { /* ignore parse errors */ }
+    }
+    if (entry.error_message) {
+      detail = `<span style="color:var(--error-fg,#dc2626)">${escHtml(entry.error_message)}</span>`;
+    }
+    if (entry.outcome === "hash_unchanged") {
+      detail = `hash: ${escHtml(entry.old_hash ?? "none")}`;
+    }
+
+    return `
+      <tr>
+        <td style="white-space:nowrap">${formatSyncDate(entry.created_at)}</td>
+        <td>${escHtml(entry.trigger_type)}</td>
+        <td style="${style};font-weight:600">${escHtml(entry.outcome)}</td>
+        <td style="font-size:0.8rem">${detail}</td>
+      </tr>
+    `;
+  }).join("");
+
+  return `
+    <div class="form-section" style="margin-top:1.25rem">
+      <h2>LegiScan Sync</h2>
+      ${msg}
+      <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">
+        <form method="POST" action="/admin/bills/${bill.id}/sync" style="display:inline">
+          <button type="submit" class="btn btn-primary btn-sm">Refresh from LegiScan</button>
+        </form>
+        <form method="POST" action="/admin/bills/${bill.id}/sync" style="display:inline">
+          <input type="hidden" name="force" value="1">
+          <button type="submit" class="btn btn-secondary btn-sm">Force Refresh (ignore hash)</button>
+        </form>
+        <span style="font-size:0.8rem;color:var(--muted2,#94a3b8)">
+          Hash: ${escHtml(bill.change_hash ?? "none")} · LegiScan ID: ${bill.legiscan_bill_id}
+        </span>
+      </div>
+      ${syncLog.length > 0 ? `
+      <table class="admin-table" style="font-size:0.8rem">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Trigger</th>
+            <th>Outcome</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${logRows}
+        </tbody>
+      </table>` : '<p style="color:var(--muted2,#94a3b8);font-size:0.85rem">No sync history yet.</p>'}
+    </div>
+  `;
 }

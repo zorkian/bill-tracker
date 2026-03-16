@@ -45,15 +45,18 @@ export function billDetailPage(bill: BillWithCategories, options?: { isAdmin?: b
       ${options?.isAdmin ? `<a href="/admin/bills/${bill.id}/edit" class="btn btn-sm btn-secondary">Edit Bill</a>` : ""}
     </div>
     ${bill.urgent ? `<div role="alert" style="background:#dc2626;color:#fff;font-weight:700;text-align:center;padding:0.6rem 1rem;border-radius:8px 8px 0 0;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.05em;">Action Alert</div>` : ""}
-    <div class="detail-card"${bill.urgent ? ' style="border-radius:0 0 8px 8px;border-top:none;background:#fef2f2;"' : ""}>
+    <div class="detail-card"${bill.urgent ? ' style="border-radius:0 0 8px 8px;border-top:none;background:var(--urgent-bg);"' : ""}>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap;">
         <div>
-          <h1 style="font-size:1.25rem;font-weight:700;color:#1e293b;margin-bottom:0.25rem">
+          <h1 style="font-size:1.25rem;font-weight:700;color:var(--fg);margin-bottom:0.25rem">
             ${escHtml(stateName)} — ${escHtml(bill.bill_number)}
           </h1>
-          ${bill.title ? `<p style="color:#475569;font-size:0.9rem">${escHtml(bill.title)}</p>` : ""}
+          ${bill.title ? `<p style="color:var(--muted3);font-size:0.9rem">${escHtml(bill.title)}</p>` : ""}
         </div>
-        <span class="status-badge ${badgeClass}" style="font-size:0.8rem;padding:0.3rem 0.7rem">${escHtml(bill.status_simple)}</span>
+        <div>
+          <span class="status-badge ${badgeClass}" style="font-size:0.8rem;padding:0.3rem 0.7rem">${escHtml(bill.status_simple)}</span>
+          ${bill.enforcement_status ? `<span class="status-badge enforcement-${bill.enforcement_status.toLowerCase().replace(/\s+/g, "-")}" style="font-size:0.8rem;padding:0.3rem 0.7rem;margin-left:0.35rem">${escHtml(bill.enforcement_status)}</span>` : ""}
+        </div>
       </div>
 
       ${bill.categories.length > 0 ? `<div style="margin-bottom:1rem">${categoryPills}</div>` : ""}
@@ -64,7 +67,8 @@ export function billDetailPage(bill: BillWithCategories, options?: { isAdmin?: b
       <div style="margin-top:1rem;">
         ${detailRow("State", stateName)}
         ${detailRow("Bill Number", bill.bill_number)}
-        ${detailRow("Status", bill.status_simple)}
+        ${detailRow("Legislative Status", bill.status_simple)}
+        ${bill.enforcement_status ? detailRow("Enforcement", bill.enforcement_status) : ""}
         ${bill.status_detail ? detailRow("Status Detail", bill.status_detail) : ""}
         ${bill.date_introduced ? detailRow("Date Introduced", formatDate(bill.date_introduced)) : ""}
         ${bill.last_action_date ? detailRow("Last Action Date", formatDate(bill.last_action_date)) : ""}

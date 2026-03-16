@@ -6,7 +6,7 @@ describe("legiscan service", () => {
     expect(mapLegiscanStatus(1)).toBe("Introduced");
     expect(mapLegiscanStatus(2)).toBe("Passed One Chamber");
     expect(mapLegiscanStatus(3)).toBe("Passed Both Chambers");
-    expect(mapLegiscanStatus(4)).toBe("Passed Both Chambers");
+    expect(mapLegiscanStatus(4)).toBe("Signed Into Law");
     expect(mapLegiscanStatus(5)).toBe("Vetoed");
     expect(mapLegiscanStatus(6)).toBe("Failed");
     expect(mapLegiscanStatus(0)).toBeNull();

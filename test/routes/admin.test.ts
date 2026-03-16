@@ -84,7 +84,7 @@ describe("admin routes", () => {
       body: form.toString(),
     }, env);
     expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toBe("/admin");
+    expect(res.headers.get("Location")).toBe(`/admin/bills/${bill.id}/edit`);
   });
 
   it("GET /admin/bills/:id/delete shows confirmation page", async () => {

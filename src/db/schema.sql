@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS bills (
   change_hash TEXT,
   legiscan_session_id INTEGER,
   urgent INTEGER NOT NULL DEFAULT 0,
+  enforcement_status TEXT,
   lawsuit_citation TEXT,
   recap_docket_url TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -35,6 +36,20 @@ CREATE TABLE IF NOT EXISTS bill_categories (
   category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
   PRIMARY KEY (bill_id, category_id)
 );
+
+CREATE TABLE IF NOT EXISTS sync_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  bill_id INTEGER NOT NULL REFERENCES bills(id),
+  trigger_type TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  old_hash TEXT,
+  new_hash TEXT,
+  changes TEXT,
+  error_message TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_sync_log_bill_id ON sync_log(bill_id);
 
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

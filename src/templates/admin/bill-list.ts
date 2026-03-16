@@ -18,7 +18,7 @@ export function adminBillListPage(bills: Bill[], role?: string): string {
         <td>${escHtml(stateName)}</td>
         <td><a href="/admin/bills/${bill.id}/edit">${escHtml(bill.bill_number)}</a></td>
         <td>${escHtml(bill.title ?? "")}</td>
-        <td><span class="status-badge ${badgeClass}">${escHtml(bill.status_simple)}</span></td>
+        <td><span class="status-badge ${badgeClass}">${escHtml(bill.status_simple)}</span>${bill.enforcement_status ? ` <span class="status-badge enforcement-${bill.enforcement_status.toLowerCase().replace(/\s+/g, "-")}">${escHtml(bill.enforcement_status)}</span>` : ""}</td>
         <td>${formatDate(bill.updated_at)}</td>
         <td>
           <a href="/admin/bills/${bill.id}/edit" class="btn btn-secondary btn-sm">Edit</a>

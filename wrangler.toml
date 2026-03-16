@@ -17,5 +17,9 @@ database_id = "<YOUR_D1_DATABASE_ID>"
 binding = "SESSIONS"
 id = "<YOUR_KV_NAMESPACE_ID>"
 
+[[r2_buckets]]
+bucket_name = "sm-bill-tracker-texts"
+binding = "BILL_TEXTS"
+
 [triggers]
 crons = ["0 6 * * *"]

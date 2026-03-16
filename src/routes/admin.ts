@@ -13,7 +13,7 @@ import { getAllCategories, createCategory, updateCategory, deleteCategory } from
 import { adminBillListPage } from "../templates/admin/bill-list";
 import { adminBillFormPage } from "../templates/admin/bill-form";
 import { adminBillDeletePage } from "../templates/admin/bill-delete";
-import { searchBill, getBillDetails } from "../services/legiscan";
+import { searchBill, getBillDetails, parseLegiscanUrl } from "../services/legiscan";
 import {
   getAllUsers,
   getUserById,
@@ -27,6 +27,7 @@ import { adminUserListPage } from "../templates/admin/user-list";
 import { adminUserFormPage } from "../templates/admin/user-form";
 import { adminPasswordFormPage } from "../templates/admin/password-form";
 import { adminCategoryListPage } from "../templates/admin/category-list";
+import { syncBillFromLegiscan, getSyncLogForBill, logSync } from "../services/sync";
 
 const admin = new Hono<{ Bindings: Bindings }>();
 
@@ -61,38 +62,51 @@ admin.post("/admin/bills", async (c) => {
     .filter((n) => !isNaN(n));
 
   const legiscanBillIdRaw = body.legiscan_bill_id as string;
-  const legiscanBillId = legiscanBillIdRaw ? Number(legiscanBillIdRaw) : undefined;
+  let legiscanBillId = legiscanBillIdRaw ? Number(legiscanBillIdRaw) : undefined;
+  if (legiscanBillId && isNaN(legiscanBillId)) legiscanBillId = undefined;
+  const legiscanUrl = (body.legiscan_url as string) || undefined;
 
-  // Auto-fetch change_hash and session_id from LegiScan when linking a bill
-  let changeHash: string | undefined;
-  let legiscanSessionId: number | undefined;
-  if (legiscanBillId && !isNaN(legiscanBillId) && c.env.LEGISCAN_API_KEY) {
+  // If a LegiScan URL is provided but no bill ID, resolve it and load all data
+  let lsData: import("../services/legiscan").LegiscanBillResult | null = null;
+  if (legiscanUrl && !legiscanBillId && c.env.LEGISCAN_API_KEY) {
+    const parsed = parseLegiscanUrl(legiscanUrl);
+    if (!parsed) {
+      const categories = await getAllCategories(c.env.DB);
+      const session = c.get("session");
+      return c.html(adminBillFormPage({ categories, role: session.role, error: "Could not parse LegiScan URL. Expected format: https://legiscan.com/STATE/bill/BILLNUMBER/YEAR" }));
+    }
+    lsData = await searchBill(c.env.LEGISCAN_API_KEY, parsed.state, parsed.billNumber, parsed.year);
+    if (!lsData) {
+      const categories = await getAllCategories(c.env.DB);
+      const session = c.get("session");
+      return c.html(adminBillFormPage({ categories, role: session.role, error: "Could not find this bill on LegiScan. Check the URL and try again." }));
+    }
+    legiscanBillId = lsData.legiscan_bill_id;
+  } else if (legiscanBillId && c.env.LEGISCAN_API_KEY) {
     try {
-      const details = await getBillDetails(c.env.LEGISCAN_API_KEY, legiscanBillId);
-      if (details) {
-        changeHash = details.change_hash ?? undefined;
-        legiscanSessionId = details.session_id ?? undefined;
-      }
+      lsData = await getBillDetails(c.env.LEGISCAN_API_KEY, legiscanBillId);
     } catch { /* non-critical */ }
   }
 
+  // Admin form values take priority; LegiScan fills in blanks
   await createBill(c.env.DB, {
     state: body.state as string,
     bill_number: body.bill_number as string,
-    title: (body.title as string) || undefined,
-    legiscan_bill_id: legiscanBillId && !isNaN(legiscanBillId) ? legiscanBillId : undefined,
-    legiscan_url: (body.legiscan_url as string) || undefined,
-    status_simple: body.status_simple as string,
-    status_detail: (body.status_detail as string) || undefined,
-    date_introduced: (body.date_introduced as string) || undefined,
-    last_action_date: (body.last_action_date as string) || undefined,
-    last_action_description: (body.last_action_description as string) || undefined,
-    session_end_date: (body.session_end_date as string) || undefined,
+    title: lsData?.title ?? ((body.title as string) || undefined),
+    legiscan_bill_id: legiscanBillId,
+    legiscan_url: legiscanUrl,
+    status_simple: lsData?.status_simple ?? (body.status_simple as string),
+    status_detail: lsData?.status_detail ?? ((body.status_detail as string) || undefined),
+    date_introduced: lsData?.date_introduced ?? ((body.date_introduced as string) || undefined),
+    last_action_date: lsData?.last_action_date ?? ((body.last_action_date as string) || undefined),
+    last_action_description: lsData?.last_action_description ?? ((body.last_action_description as string) || undefined),
+    session_end_date: lsData?.session_end_date ?? ((body.session_end_date as string) || undefined),
     social_media_definition: (body.social_media_definition as string) || undefined,
     notes: (body.notes as string) || undefined,
-    change_hash: changeHash,
-    legiscan_session_id: legiscanSessionId,
+    change_hash: lsData?.change_hash ?? null,
+    legiscan_session_id: lsData?.session_id ?? null,
     urgent: body.urgent ? 1 : 0,
+    enforcement_status: (body.enforcement_status as string) || undefined,
     lawsuit_citation: (body.lawsuit_citation as string) || undefined,
     recap_docket_url: (body.recap_docket_url as string) || undefined,
     category_ids: categoryIds,
@@ -105,9 +119,29 @@ admin.get("/admin/bills/:id/edit", async (c) => {
   const id = Number(c.req.param("id"));
   const bill = await getBillById(c.env.DB, id);
   if (!bill) return c.notFound();
-  const categories = await getAllCategories(c.env.DB);
+  const [categories, syncLog] = await Promise.all([
+    getAllCategories(c.env.DB),
+    getSyncLogForBill(c.env.DB, id),
+  ]);
   const session = c.get("session");
-  return c.html(adminBillFormPage({ bill, categories, role: session.role }));
+  const syncMessage = c.req.query("sync");
+  return c.html(adminBillFormPage({ bill, categories, role: session.role, syncLog, syncMessage }));
+});
+
+admin.post("/admin/bills/:id/sync", async (c) => {
+  const id = Number(c.req.param("id"));
+  const bill = await getBillById(c.env.DB, id);
+  if (!bill) return c.notFound();
+
+  const apiKey = c.env.LEGISCAN_API_KEY;
+  if (!apiKey) {
+    return c.redirect(`/admin/bills/${id}/edit?sync=no_api_key`);
+  }
+
+  const body = await c.req.parseBody();
+  const force = body.force === "1";
+  const result = await syncBillFromLegiscan(c.env.DB, apiKey, bill, "admin", { force });
+  return c.redirect(`/admin/bills/${id}/edit?sync=${result.outcome}`);
 });
 
 admin.post("/admin/bills/:id", async (c) => {
@@ -124,48 +158,70 @@ admin.post("/admin/bills/:id", async (c) => {
     .map(Number)
     .filter((n) => !isNaN(n));
 
-  const legiscanBillIdRaw = body.legiscan_bill_id as string;
-  const legiscanBillId = legiscanBillIdRaw ? Number(legiscanBillIdRaw) : undefined;
-
   const existingBill = await getBillById(c.env.DB, id);
+  const legiscanUrl = (body.legiscan_url as string) || undefined;
+  const legiscanBillIdRaw = body.legiscan_bill_id as string;
+  let legiscanBillId = legiscanBillIdRaw ? Number(legiscanBillIdRaw) : existingBill?.legiscan_bill_id ?? undefined;
+  if (legiscanBillId && isNaN(legiscanBillId)) legiscanBillId = undefined;
 
-  // Fetch change_hash/session_id when legiscan_bill_id is newly set or changed
-  let changeHash: string | undefined;
-  let legiscanSessionId: number | undefined;
-  const newLegiscanId = legiscanBillId && !isNaN(legiscanBillId) ? legiscanBillId : undefined;
-  if (newLegiscanId && newLegiscanId !== existingBill?.legiscan_bill_id && c.env.LEGISCAN_API_KEY) {
-    try {
-      const details = await getBillDetails(c.env.LEGISCAN_API_KEY, newLegiscanId);
-      if (details) {
-        changeHash = details.change_hash ?? undefined;
-        legiscanSessionId = details.session_id ?? undefined;
-      }
-    } catch { /* non-critical */ }
+  // If LegiScan URL changed or is newly set, resolve it and load all data
+  let lsData: import("../services/legiscan").LegiscanBillResult | null = null;
+  const urlChanged = legiscanUrl && legiscanUrl !== existingBill?.legiscan_url;
+  const needsResolve = legiscanUrl && (!existingBill?.legiscan_bill_id || urlChanged);
+
+  if (needsResolve && c.env.LEGISCAN_API_KEY) {
+    const parsed = parseLegiscanUrl(legiscanUrl);
+    if (!parsed) {
+      const [categories, syncLog] = await Promise.all([
+        getAllCategories(c.env.DB),
+        getSyncLogForBill(c.env.DB, id),
+      ]);
+      const session = c.get("session");
+      return c.html(adminBillFormPage({ bill: existingBill!, categories, role: session.role, syncLog, error: "Could not parse LegiScan URL. Expected format: https://legiscan.com/STATE/bill/BILLNUMBER/YEAR" }));
+    }
+    lsData = await searchBill(c.env.LEGISCAN_API_KEY, parsed.state, parsed.billNumber, parsed.year);
+    if (!lsData) {
+      const [categories, syncLog] = await Promise.all([
+        getAllCategories(c.env.DB),
+        getSyncLogForBill(c.env.DB, id),
+      ]);
+      const session = c.get("session");
+      return c.html(adminBillFormPage({ bill: existingBill!, categories, role: session.role, syncLog, error: "Could not find this bill on LegiScan. Check the URL and try again." }));
+    }
+    legiscanBillId = lsData.legiscan_bill_id;
   }
 
+  // When re-linking (lsData set), LegiScan data replaces all LegiScan-managed fields.
+  // For normal edits, use form values.
   await updateBill(c.env.DB, id, {
-    state: body.state as string,
-    bill_number: body.bill_number as string,
-    title: (body.title as string) || undefined,
-    legiscan_bill_id: newLegiscanId,
-    legiscan_url: (body.legiscan_url as string) || undefined,
-    status_simple: body.status_simple as string,
-    status_detail: (body.status_detail as string) || undefined,
-    date_introduced: (body.date_introduced as string) || undefined,
-    last_action_date: (body.last_action_date as string) || undefined,
-    last_action_description: (body.last_action_description as string) || undefined,
-    session_end_date: (body.session_end_date as string) || undefined,
+    state: lsData?.state ?? (body.state as string),
+    bill_number: lsData?.bill_number ?? (body.bill_number as string),
+    title: lsData?.title ?? ((body.title as string) || undefined),
+    legiscan_bill_id: legiscanBillId,
+    legiscan_url: legiscanUrl,
+    status_simple: lsData?.status_simple ?? (body.status_simple as string),
+    status_detail: lsData?.status_detail ?? ((body.status_detail as string) || undefined),
+    date_introduced: lsData?.date_introduced ?? ((body.date_introduced as string) || undefined),
+    last_action_date: lsData?.last_action_date ?? ((body.last_action_date as string) || undefined),
+    last_action_description: lsData?.last_action_description ?? ((body.last_action_description as string) || undefined),
+    session_end_date: lsData?.session_end_date ?? ((body.session_end_date as string) || undefined),
     social_media_definition: (body.social_media_definition as string) || undefined,
     notes: (body.notes as string) || undefined,
-    ...(changeHash ? { change_hash: changeHash } : {}),
-    ...(legiscanSessionId ? { legiscan_session_id: legiscanSessionId } : {}),
+    ...(lsData ? { change_hash: lsData.change_hash ?? null } : {}),
+    ...(lsData ? { legiscan_session_id: lsData.session_id ?? null } : {}),
     urgent: body.urgent ? 1 : 0,
+    enforcement_status: (body.enforcement_status as string) || undefined,
     lawsuit_citation: (body.lawsuit_citation as string) || undefined,
     recap_docket_url: (body.recap_docket_url as string) || undefined,
     category_ids: categoryIds,
   });
 
-  return c.redirect("/admin");
+  if (lsData) {
+    await logSync(c.env.DB, id, "admin-relink", "updated", existingBill?.change_hash ?? null, lsData.change_hash ?? null,
+      JSON.stringify({ legiscan_bill_id: { old: existingBill?.legiscan_bill_id, new: lsData.legiscan_bill_id } }), null);
+  }
+
+  return c.redirect(`/admin/bills/${id}/edit`);
 });
 
 admin.get("/admin/bills/:id/delete", async (c) => {

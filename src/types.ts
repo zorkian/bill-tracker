@@ -1,7 +1,9 @@
 export interface Bindings {
   DB: D1Database;
   SESSIONS: KVNamespace;
+  BILL_TEXTS: R2Bucket;
   LEGISCAN_API_KEY: string;
+  ANTHROPIC_API_KEY: string;
 }
 
 export interface Bill {
@@ -22,6 +24,7 @@ export interface Bill {
   change_hash: string | null;
   legiscan_session_id: number | null;
   urgent: number;
+  enforcement_status: string | null;
   lawsuit_citation: string | null;
   recap_docket_url: string | null;
   created_at: string;
@@ -52,8 +55,10 @@ export type StatusSimple =
   | "Passed One Chamber"
   | "Passed Both Chambers"
   | "Signed Into Law"
-  | "Lawsuit Filed, Temporarily Enjoined"
-  | "Lawsuit Filed, Law in Effect"
-  | "Law Ruled Unconstitutional"
   | "Vetoed"
   | "Failed";
+
+export type EnforcementStatus =
+  | "In Effect"
+  | "Enjoined"
+  | "Ruled Unconstitutional";
