@@ -5,6 +5,7 @@ dist/
 .superpowers/
 backups/
 wrangler-env/
+docs/superpowers/
 .claude/
 .idea/
 .vscode/
