@@ -77,7 +77,7 @@ In `src/db/seed.sql`, replace the users INSERT with:
 
 ```sql
 INSERT OR IGNORE INTO users (username, password_hash, role) VALUES
-  ('admin', '$2b$10$wZ22x7OrecQi.wMFfwax0.8n97Wrg7CB/VgF6CZctqggRDNpJ.qkG', 'admin');
+  ('admin', '<YOUR_BCRYPT_HASH_HERE>', 'admin');
 ```
 
 - [ ] **Step 4: Update User type in `src/types.ts`**

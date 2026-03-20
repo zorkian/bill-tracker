@@ -23,5 +23,8 @@ INSERT OR IGNORE INTO categories (name, slug, sort_order) VALUES
   ('Content-Specific Restrictions', 'content-specific-restrictions', 22),
   ('Disable Logged-Out Viewing', 'disable-logged-out-viewing', 23);
 
-INSERT OR IGNORE INTO users (username, password_hash, role) VALUES
-  ('admin', '$2b$10$wZ22x7OrecQi.wMFfwax0.8n97Wrg7CB/VgF6CZctqggRDNpJ.qkG', 'admin');
+-- To seed an admin user, generate a bcrypt hash for your chosen password:
+--   node -e "require('bcryptjs').hash('your-password', 10).then(h => console.log(h))"
+-- Then uncomment and fill in the INSERT below:
+-- INSERT OR IGNORE INTO users (username, password_hash, role) VALUES
+--   ('admin', '<YOUR_BCRYPT_HASH_HERE>', 'admin');

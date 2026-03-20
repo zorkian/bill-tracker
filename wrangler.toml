@@ -2,23 +2,24 @@ name = "sm-bill-tracker"
 main = "src/index.ts"
 compatibility_date = "2024-12-01"
 
-routes = [
-  { pattern = "bill-of-wrongs.com", custom_domain = true }
-]
+# Uncomment and set your custom domain, or remove for local dev
+# routes = [
+#   { pattern = "your-domain.com", custom_domain = true }
+# ]
 
 assets = { directory = "public" }
 
 [[d1_databases]]
 binding = "DB"
 database_name = "sm-bill-tracker"
-database_id = "<YOUR_D1_DATABASE_ID>"
+database_id = "<YOUR_D1_DATABASE_ID>"  # Create with: wrangler d1 create sm-bill-tracker
 
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "<YOUR_KV_NAMESPACE_ID>"
+id = "<YOUR_KV_NAMESPACE_ID>"  # Create with: wrangler kv namespace create SESSIONS
 
 [[r2_buckets]]
-bucket_name = "sm-bill-tracker-texts"
+bucket_name = "<YOUR_R2_BUCKET_NAME>"  # Create with: wrangler r2 bucket create sm-bill-tracker-texts
 binding = "BILL_TEXTS"
 
 [triggers]
