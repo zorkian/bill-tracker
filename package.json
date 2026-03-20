@@ -22,11 +22,11 @@
     "hono": "^4.12.7"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.12.21",
+    "@cloudflare/vitest-pool-workers": "^0.13.3",
     "@cloudflare/workers-types": "^4.20260313.1",
     "@types/bcryptjs": "^3.0.0",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.0",
     "wrangler": "^4.72.0"
   }
 }

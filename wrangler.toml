@@ -19,7 +19,7 @@ binding = "SESSIONS"
 id = "<YOUR_KV_NAMESPACE_ID>"  # Create with: wrangler kv namespace create SESSIONS
 
 [[r2_buckets]]
-bucket_name = "<YOUR_R2_BUCKET_NAME>"  # Create with: wrangler r2 bucket create sm-bill-tracker-texts
+bucket_name = "sm-bill-tracker-texts"  # Create with: wrangler r2 bucket create sm-bill-tracker-texts
 binding = "BILL_TEXTS"
 
 [triggers]
