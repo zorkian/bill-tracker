@@ -243,9 +243,8 @@ admin.post("/admin/bills/:id/analyze", async (c) => {
       ai_social_media_definition: analysis.social_media_definition ?? undefined,
     });
 
-    // Save AI-suggested categories (only if bill has no categories yet)
-    const existingCats = bill.categories.length > 0;
-    if (!existingCats && analysis.category_ids.length > 0) {
+    // Save AI-suggested categories and reasons
+    if (analysis.category_ids.length > 0) {
       const reasons: Record<number, string> = {};
       for (const r of analysis.category_reasons) reasons[r.id] = r.reason;
       await updateBill(c.env.DB, id, {

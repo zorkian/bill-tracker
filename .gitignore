@@ -5,3 +5,7 @@ dist/
 .superpowers/
 backups/
 wrangler-env/
+.claude/
+.idea/
+.vscode/
+.mcp.json

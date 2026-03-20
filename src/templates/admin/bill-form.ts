@@ -240,6 +240,7 @@ export function adminBillFormPage(options: {
         <div style="display:flex;gap:0.75rem;align-items:center;">
           <button type="submit" class="btn btn-primary">Save Bill</button>
           <a href="/admin" class="btn btn-secondary">Cancel</a>
+          ${isEdit ? `<a href="/bill/${bill.id}" class="btn btn-secondary" target="_blank">View Bill</a>` : ""}
         </div>
         ${isEdit ? `<a href="/admin/bills/${bill.id}/delete" class="btn btn-danger btn-sm">Delete Bill</a>` : ""}
       </div>
